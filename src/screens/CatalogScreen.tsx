@@ -1,16 +1,18 @@
 import { useMemo, useState } from "react";
-import type { MuscleGroup } from "../types";
+import type { Exercise, MuscleGroup } from "../types";
 import {
   EQUIPMENT_LABELS,
   MUSCLE_LABELS,
   MUSCLE_ORDER,
   filterExercises,
 } from "../domain/catalog";
+import { mediaFor } from "../domain/media";
+import ExerciseSheet from "../components/ExerciseSheet";
 
 export default function CatalogScreen() {
   const [query, setQuery] = useState("");
   const [muscle, setMuscle] = useState<MuscleGroup | "all">("all");
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [open, setOpen] = useState<Exercise | null>(null);
 
   const list = useMemo(() => filterExercises({ query, muscle }), [query, muscle]);
 
@@ -51,38 +53,36 @@ export default function CatalogScreen() {
 
       <ul className="exercises">
         {list.map((ex) => {
-          const open = openId === ex.id;
+          const media = mediaFor(ex.id);
           return (
             <li key={ex.id} className="exercise">
-              <button
-                type="button"
-                className="exercise__head"
-                onClick={() => setOpenId(open ? null : ex.id)}
-                aria-expanded={open}
-              >
-                <span className="exercise__name">{ex.name}</span>
-                <span className="exercise__meta">
-                  {MUSCLE_LABELS[ex.primaryMuscle]} · {EQUIPMENT_LABELS[ex.equipment]}
-                  {ex.isCompound ? " · база" : ""}
+              <button type="button" className="exercise__head" onClick={() => setOpen(ex)}>
+                {media && media.images[0] && (
+                  <img
+                    className="exercise__thumb"
+                    src={media.images[0]}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                  />
+                )}
+                <span className="exercise__text">
+                  <span className="exercise__name">{ex.name}</span>
+                  <span className="exercise__meta">
+                    {MUSCLE_LABELS[ex.primaryMuscle]} · {EQUIPMENT_LABELS[ex.equipment]}
+                    {ex.isCompound ? " · база" : ""}
+                  </span>
+                </span>
+                <span className="exercise__chev" aria-hidden="true">
+                  ›
                 </span>
               </button>
-              {open && (
-                <ul className="exercise__cues">
-                  {ex.cues.map((cue) => (
-                    <li key={cue}>{cue}</li>
-                  ))}
-                  {ex.secondaryMuscles.length > 0 && (
-                    <li className="exercise__secondary">
-                      Дополнительно:{" "}
-                      {ex.secondaryMuscles.map((m) => MUSCLE_LABELS[m]).join(", ")}
-                    </li>
-                  )}
-                </ul>
-              )}
             </li>
           );
         })}
       </ul>
+
+      {open && <ExerciseSheet exercise={open} onClose={() => setOpen(null)} />}
     </div>
   );
 }

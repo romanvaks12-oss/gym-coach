@@ -6,6 +6,7 @@
   --text: #e8eaee;
   --text-dim: #9aa1ad;
   --accent: #7dd3a0;
+  --accent-dim: rgba(125, 211, 160, 0.45);
   --warn: #f0a868;
   --radius: 14px;
 }
@@ -348,4 +349,370 @@ body {
 .tab__icon {
   font-size: 18px;
   line-height: 1;
+}
+
+/* ── P1: бриф, план, тренировка ───────────────────────────── */
+
+.scale {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scale__head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.scale__value {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.scale__value--warn {
+  color: var(--warn);
+}
+
+.scale__hint {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 6px;
+}
+
+.seg {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-muted);
+  color: var(--text-dim);
+  font-size: 15px;
+}
+
+.segmented__item--active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.range {
+  width: 100%;
+  height: 32px;
+  accent-color: var(--accent);
+}
+
+.exercise__head {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.exercise__thumb {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--surface-muted);
+}
+
+.exercise__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.exercise__chev {
+  color: var(--text-dim);
+  font-size: 20px;
+}
+
+/* ── шторка упражнения ── */
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+}
+
+.sheet__panel {
+  position: relative;
+  max-height: 90dvh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-radius: 18px 18px 0 0;
+  padding: 16px 16px calc(env(safe-area-inset-bottom) + 20px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sheet__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sheet__title {
+  margin: 0 0 4px;
+  font-size: 19px;
+}
+
+.sheet__block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sheet__subtitle {
+  margin: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+}
+
+.iconbtn {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: 16px;
+}
+
+.media {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.media__item {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.media__item img {
+  width: 100%;
+  border-radius: 12px;
+  background: #1f232b;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
+.media__item figcaption,
+.musclemap__view figcaption {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.musclemap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.musclemap__view {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.musclemap__view svg {
+  width: 100%;
+  height: auto;
+  max-height: 190px;
+}
+
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  margin-right: 4px;
+}
+
+.dot--primary {
+  background: var(--accent);
+}
+
+.dot--secondary {
+  background: var(--accent-dim);
+}
+
+/* ── готовность и план ── */
+
+.readiness {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.readiness__score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 74px;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.readiness__value {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.readiness__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plan__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.plan__meta {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.plan__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.plan__table th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-dim);
+  padding-bottom: 6px;
+}
+
+.plan__table td {
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.plan__table td:not(:first-child),
+.plan__table th:not(:first-child) {
+  text-align: right;
+  padding-left: 8px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── тренировка ── */
+
+.runner__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.runner__target {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.runner__goal {
+  font-size: 16px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.linkbtn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 13px;
+  text-decoration: underline;
+  padding: 8px;
+}
+
+.card--rest {
+  border-color: var(--accent-dim);
+}
+
+.rest__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rest__time {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+.field--half {
+  flex: 1;
+}
+
+.setlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.setlist li {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
 }

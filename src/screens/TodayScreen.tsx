@@ -1,52 +1,157 @@
-const WEEKDAY = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
-const MONTH = [
-  "января", "февраля", "марта", "апреля", "мая", "июня",
-  "июля", "августа", "сентября", "октября", "ноября", "декабря",
-];
+import { useState } from "react";
+import type { Brief, SetLog, Workout } from "../types";
+import { EXERCISES } from "../domain/catalog";
+import { buildPlans, type PlanOption } from "../core/plan";
+import { computeReadiness, type ReadinessResult } from "../core/readiness";
+import { nowIso, todayIso } from "../core/dates";
+import { db } from "../storage/db";
+import { loadHistory } from "../storage/history";
+import BriefForm from "./BriefForm";
+import PlanPicker from "./PlanPicker";
+import WorkoutRunner from "./WorkoutRunner";
 
-function todayLabel(): string {
-  const d = new Date();
-  const weekday = WEEKDAY[d.getDay()];
-  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)}, ${d.getDate()} ${MONTH[d.getMonth()]}`;
-}
+type Step =
+  | { kind: "brief" }
+  | { kind: "plans"; plans: PlanOption[]; readiness: ReadinessResult; brief: Brief }
+  | { kind: "workout"; plan: PlanOption; workoutId: string; startedAt: number; readiness: number }
+  | {
+      kind: "done";
+      tonnage: number;
+      sets: number;
+      minutes: number;
+      exerciseCount: number;
+    };
 
 export default function TodayScreen() {
+  const [step, setStep] = useState<Step>({ kind: "brief" });
+  const [busy, setBusy] = useState(false);
+
+  async function onBrief(brief: Brief) {
+    setBusy(true);
+    const readiness = computeReadiness(brief);
+    const history = await loadHistory();
+    const plans = buildPlans({
+      brief,
+      readiness,
+      history,
+      exercises: EXERCISES,
+      todayIso: todayIso(),
+    });
+    setBusy(false);
+    setStep({ kind: "plans", plans, readiness, brief });
+  }
+
+  function onPick(plan: PlanOption, readiness: number) {
+    setStep({
+      kind: "workout",
+      plan,
+      workoutId: crypto.randomUUID(),
+      startedAt: Date.now(),
+      readiness,
+    });
+  }
+
+  async function onFinish(
+    logs: SetLog[],
+    durationMin: number,
+    plan: PlanOption,
+    workoutId: string,
+    readiness: number,
+  ) {
+    const timestamp = nowIso();
+    const workout: Workout = {
+      id: workoutId,
+      date: todayIso(),
+      readiness,
+      durationMin,
+      planId: plan.id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      pendingSync: true,
+    };
+
+    await db.put("workouts", workout);
+    for (const log of logs) {
+      await db.put("sets", log);
+    }
+
+    const tonnage = logs.reduce((sum, l) => sum + l.weight * l.reps, 0);
+    setStep({
+      kind: "done",
+      tonnage,
+      sets: logs.length,
+      minutes: durationMin,
+      exerciseCount: new Set(logs.map((l) => l.exerciseId)).size,
+    });
+  }
+
+  if (busy) {
+    return (
+      <div className="screen">
+        <p className="card__text">Считаю план…</p>
+      </div>
+    );
+  }
+
+  if (step.kind === "brief") {
+    return <BriefForm onDone={onBrief} />;
+  }
+
+  if (step.kind === "plans") {
+    return (
+      <PlanPicker
+        plans={step.plans}
+        readiness={step.readiness}
+        onPick={(plan) => onPick(plan, step.readiness.score)}
+        onBack={() => setStep({ kind: "brief" })}
+      />
+    );
+  }
+
+  if (step.kind === "workout") {
+    return (
+      <WorkoutRunner
+        plan={step.plan}
+        exercises={EXERCISES}
+        workoutId={step.workoutId}
+        startedAt={step.startedAt}
+        onFinish={(logs, minutes) =>
+          onFinish(logs, minutes, step.plan, step.workoutId, step.readiness)
+        }
+        onCancel={() => setStep({ kind: "brief" })}
+      />
+    );
+  }
+
   return (
     <div className="screen">
-      <h1 className="screen__title">{todayLabel()}</h1>
-
-      <section className="card card--muted">
-        <h2 className="card__title">Бриф и план — следующий шаг</h2>
-        <p className="card__text">
-          Здесь появится короткий бриф о самочувствии: сон, энергия, стресс, болезненность по группам
-          и сколько времени есть. Дальше движок правил предложит 1–3 тренировки с причиной выбора.
-        </p>
-        <ul className="list">
-          <li>readiness = f(сон, энергия, стресс, болезненность)</li>
-          <li>болезненность ≥ 7 — группу не грузим</li>
-          <li>объём недели держим в коридоре MEV–MRV</li>
-        </ul>
-      </section>
-
+      <h1 className="screen__title">Тренировка записана</h1>
       <section className="card">
-        <h2 className="card__title">Твой режим</h2>
-        <div className="table">
-          <div className="table__row table__row--head">
-            <span>День</span>
-            <span>План</span>
+        <div className="stats">
+          <div className="stat">
+            <span className="stat__value">{Math.round(step.tonnage)}</span>
+            <span className="stat__label">кг тоннажа</span>
           </div>
-          <div className="table__row"><span>Вт</span><span>зал</span></div>
-          <div className="table__row"><span>Чт</span><span>зал</span></div>
-          <div className="table__row"><span>Сб</span><span>зал</span></div>
-          <div className="table__row"><span>Вс</span><span>зал</span></div>
-          <div className="table__row"><span>Пн / Ср / Пт</span><span>бассейн или отдых</span></div>
+          <div className="stat">
+            <span className="stat__value">{step.sets}</span>
+            <span className="stat__label">подходов</span>
+          </div>
+          <div className="stat">
+            <span className="stat__value">{step.exerciseCount}</span>
+            <span className="stat__label">упражнений</span>
+          </div>
+          <div className="stat">
+            <span className="stat__value">{step.minutes}</span>
+            <span className="stat__label">минут</span>
+          </div>
         </div>
       </section>
-
-      <p className="disclaimer">
-        Приложение не заменяет тренера и врача. Острая боль, боль в суставе или головокружение —
-        повод остановиться и обратиться к специалисту.
+      <p className="hint">
+        Данные уже в локальной базе. Синхронизация с Google Sheets появится в следующей фазе.
       </p>
+      <button type="button" className="button" onClick={() => setStep({ kind: "brief" })}>
+        Заполнить бриф заново
+      </button>
     </div>
   );
 }
