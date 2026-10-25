@@ -35,8 +35,9 @@ URL Web App и токен хранятся в localStorage телефона (в 
 ## ADR-004 — Стек: Vite + React + TypeScript
 
 **Статус:** accepted (2026-10-25)
-**Решение:** SPA на Vite 5, React 18, TypeScript strict, Vitest для `src/core/`, без UI-библиотек
-(свои компоненты, CSS-переменные). Роутинг — HashRouter (требование GitHub Pages).
+**Решение:** SPA на Vite, React 18, TypeScript strict, Vitest для `src/core/`, без UI-библиотек
+(свои компоненты, CSS-переменные). Навигация — табы в состоянии, без роутера; frontend-роутер
+добавим только если появятся deep links (тогда HashRouter — требование GitHub Pages).
 **Последствия:** нужен Node.js на машине, `npm install` / `npm run dev`. Зато типы ловят половину ошибок.
 
 ## ADR-005 — Имя проекта: gym-coach

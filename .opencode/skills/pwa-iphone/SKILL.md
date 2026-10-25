@@ -43,7 +43,9 @@ description: Веб-приложение под iPhone — manifest, safe-area, 
 ## Деплой на GitHub Pages
 
 - `vite.config.ts`: `base: "/<repo>/"` (или кастомный домен → `base: "/"`).
-- Роутинг — **HashRouter**, иначе перезагрузка на вложенном адресе даёт 404.
+- Роутинг — табами в состоянии компонента: ссылки не нужны, роутер не тянем. Если появятся
+  deep links (например, «открыть тренировку по ссылке») — переходить на HashRouter, а не BrowserRouter,
+  иначе перезагрузка на вложенном адресе на Pages даст 404.
 - GitHub Actions: `npm ci && npm run build` → `actions/upload-pages-artifact` → `actions/deploy-pages`.
   Права: `pages: write`, `id-token: write`.
 - Публичный репозиторий = бесплатные минуты Actions; данные всё равно только в телефоне и в Sheets.
