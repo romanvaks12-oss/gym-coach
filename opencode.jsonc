@@ -1,0 +1,32 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // Всегда в контексте: короткий файл состояния проекта.
+  "instructions": ["docs/state.md"],
+
+  // Ограничение размера вывода инструментов.
+  "tool_output": {
+    "max_lines": 1200,
+    "max_bytes": 40000
+  },
+
+  "compaction": {
+    "auto": true,
+    "keep": { "tokens": 12000 },
+    "buffer": 16000
+  },
+
+  "watcher": {
+    "ignore": ["node_modules/**", "dist/**", "**/__pycache__/**", "**/*.log"]
+  },
+
+  "permissions": [
+    { "action": "shell", "resource": "git push *", "effect": "ask" },
+    { "action": "shell", "resource": "git reset --hard *", "effect": "ask" },
+    { "action": "shell", "resource": "npm publish *", "effect": "ask" },
+    { "action": "shell", "resource": "Remove-Item * -Recurse *", "effect": "ask" }
+  ]
+
+  // MCP подключаем только после выбора площадки (см. docs/stack.md).
+  // Пример: { "mcp": { "context7": { "type": "remote", "url": "<уточнить в доке>", "enabled": true } } }
+}
