@@ -12,4 +12,12 @@
 
 ## Статус
 
-Этап 0: выбор стека. Кода пока нет.
+Этап P1: бриф → план → лог подходов → сводка. Работает локально, деплой на Pages — после
+авторизации в GitHub.
+
+## Источники
+
+- Иллюстрации и мышечные данные: [yuhonas/free-exercise-db](https://github.com/yuhonas/free-exercise-db),
+  лицензия Unlicense (public domain), отдача через CDN jsDelivr.
+- Методика (прогрессия, объёмы, RPE/RIR): см. скил `.opencode/skills/training-domain`.
+
