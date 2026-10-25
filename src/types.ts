@@ -35,6 +35,8 @@ export type Pattern =
   | "isolation"
   | "core";
 
+export type Measure = "reps" | "time";
+
 export interface Exercise {
   id: string;
   name: string;
@@ -44,6 +46,10 @@ export interface Exercise {
   pattern: Pattern;
   isCompound: boolean;
   isUnilateral: boolean;
+  /** reps — повторы, time — секунды (планка, прогулка фермера) */
+  measure?: Measure;
+  /** Вес снаряда не прибавляется: считаем вес тела (подтягивания, брусья, отжимания) */
+  usesBodyweight?: boolean;
   /** Short technique cues shown during the workout. */
   cues: string[];
 }
@@ -55,6 +61,8 @@ export interface Brief {
   soreness: Partial<Record<MuscleGroup, number>>; // 0..10
   minutes: 30 | 45 | 60 | 90;
   painNote?: string;
+  /** Вес тела на сегодня, кг — нужен для подтягиваний и отжиманий */
+  bodyWeightKg?: number;
 }
 
 export interface Workout {

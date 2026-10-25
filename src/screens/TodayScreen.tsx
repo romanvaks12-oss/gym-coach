@@ -74,6 +74,15 @@ export default function TodayScreen() {
     for (const log of logs) {
       await db.put("sets", log);
     }
+    if (plan.bodyWeightKg) {
+      await db.put("body", {
+        id: `${workout.date}-weight`,
+        date: workout.date,
+        weightKg: plan.bodyWeightKg,
+        createdAt: timestamp,
+        pendingSync: true,
+      });
+    }
 
     const tonnage = logs.reduce((sum, l) => sum + l.weight * l.reps, 0);
     setStep({

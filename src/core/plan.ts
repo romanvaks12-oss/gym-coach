@@ -10,9 +10,11 @@ export interface PlanItem {
   sets: number;
   repLow: number;
   repHigh: number;
-  /** Цель по повторам в первом подходе */
+  /** Цель по повторам (или секундам) в первом подходе */
   repTarget: number;
   weight: number | null;
+  measure: "reps" | "time";
+  usesBodyweight: boolean;
   targetRpe: number;
   restSec: number;
   reason: string;
@@ -27,6 +29,8 @@ export interface PlanOption {
   items: PlanItem[];
   estimatedMin: number;
   volumeMultiplier: number;
+  /** Вес тела на сегодня — нужен для упражнений с собственным весом */
+  bodyWeightKg: number | null;
 }
 
 interface Slot {
@@ -220,17 +224,20 @@ export function buildPlans(params: {
       if (!ex) continue;
       used.add(ex.id);
 
-      const repLow = ex.pattern === "core" ? 10 : ex.isCompound ? 6 : 10;
-      const repHigh = ex.pattern === "core" ? 15 : ex.isCompound ? 10 : 15;
-      const baseSets = ex.isCompound ? 4 : 3;
+      const isTime = ex.measure === "time";
+      const repLow = isTime ? 30 : ex.pattern === "core" ? 10 : ex.isCompound ? 6 : 10;
+      const repHigh = isTime ? 45 : ex.pattern === "core" ? 15 : ex.isCompound ? 10 : 15;
+      const baseSets = isTime ? 3 : ex.isCompound ? 4 : 3;
       const sets = Math.min(4, Math.max(2, Math.round(baseSets * readiness.volumeMultiplier)));
       const target = nextTarget({
         equipment: ex.equipment,
         repLow,
         repHigh,
+        measure: ex.measure,
+        usesBodyweight: ex.usesBodyweight,
         lastSets: lastSessionSets(history, ex.id),
       });
-      const restSec = ex.isCompound ? 120 : 75;
+      const restSec = isTime ? 60 : ex.isCompound ? 120 : 75;
 
       items.push({
         exerciseId: ex.id,
@@ -240,6 +247,8 @@ export function buildPlans(params: {
         repHigh: target.repHigh,
         repTarget: target.repTarget,
         weight: target.weight,
+        measure: ex.measure ?? "reps",
+        usesBodyweight: Boolean(ex.usesBodyweight),
         targetRpe: readiness.band === "low" ? 7 : 8,
         restSec,
         reason: target.reason,
@@ -264,6 +273,7 @@ export function buildPlans(params: {
       items,
       estimatedMin,
       volumeMultiplier: readiness.volumeMultiplier,
+      bodyWeightKg: brief.bodyWeightKg ?? null,
     };
   });
 }

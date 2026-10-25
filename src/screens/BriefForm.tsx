@@ -53,6 +53,7 @@ export default function BriefForm({ onDone }: { onDone: (brief: Brief) => void }
   const [stress, setStress] = useState(3);
   const [minutes, setMinutes] = useState<Brief["minutes"]>(60);
   const [painNote, setPainNote] = useState("");
+  const [bodyWeight, setBodyWeight] = useState("");
   const [soreness, setSoreness] = useState<Record<string, number>>({});
 
   const setSore = (muscle: string, value: number) =>
@@ -114,6 +115,16 @@ export default function BriefForm({ onDone }: { onDone: (brief: Brief) => void }
 
       <section className="card">
         <label className="field">
+          <span className="field__label">Вес тела сегодня, кг (для подтягиваний и отжиманий)</span>
+          <input
+            className="input"
+            inputMode="decimal"
+            placeholder="например 78,4"
+            value={bodyWeight}
+            onChange={(e) => setBodyWeight(e.target.value)}
+          />
+        </label>
+        <label className="field">
           <span className="field__label">Есть боль или ограничение? (не обязательно)</span>
           <input
             className="input"
@@ -135,6 +146,7 @@ export default function BriefForm({ onDone }: { onDone: (brief: Brief) => void }
             stress,
             minutes,
             painNote: painNote.trim() || undefined,
+            bodyWeightKg: Number(bodyWeight.replace(",", ".")) || undefined,
             soreness: soreness as Brief["soreness"],
           })
         }

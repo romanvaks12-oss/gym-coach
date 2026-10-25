@@ -716,3 +716,10 @@ body {
   border-top: 1px solid var(--line);
   padding-top: 6px;
 }
+
+.musclemap__defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}

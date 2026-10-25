@@ -67,8 +67,15 @@ export default function PlanPicker({
                   <td>{item.sets}</td>
                   <td>
                     {item.repLow}–{item.repHigh}
+                    {item.measure === "time" ? " с" : ""}
                   </td>
-                  <td>{item.weight === null ? "подбери" : `${item.weight} кг`}</td>
+                  <td>
+                    {item.usesBodyweight
+                      ? "свой вес"
+                      : item.weight === null
+                        ? "подбери"
+                        : `${item.weight} кг`}
+                  </td>
                 </tr>
               ))}
             </tbody>

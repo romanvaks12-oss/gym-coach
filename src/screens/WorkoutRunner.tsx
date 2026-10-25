@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PlanOption } from "../core/plan";
 import { nowIso } from "../core/dates";
+import { warmupSets } from "../core/progression";
 import type { Exercise, SetLog } from "../types";
 import ExerciseSheet from "../components/ExerciseSheet";
 
@@ -24,6 +25,7 @@ export default function WorkoutRunner({
   const [index, setIndex] = useState(0);
   const [logs, setLogs] = useState<SetLog[]>([]);
   const [weight, setWeight] = useState("");
+  const [extraWeight, setExtraWeight] = useState("");
   const [reps, setReps] = useState("");
   const [rpe, setRpe] = useState(8);
   const [restLeft, setRestLeft] = useState<number | null>(null);
@@ -35,10 +37,14 @@ export default function WorkoutRunner({
     [exercises, item?.exerciseId],
   );
 
-  // Подставляем целевые значения при переходе к упражнению
+  const isTime = item?.measure === "time";
+  const isBodyweight = Boolean(item?.usesBodyweight);
+  const bodyWeight = plan.bodyWeightKg;
+
   useEffect(() => {
     if (!item) return;
     setWeight(item.weight === null ? "" : String(item.weight));
+    setExtraWeight("");
     setReps(String(item.repTarget));
     setRpe(item.targetRpe);
   }, [item]);
@@ -66,19 +72,26 @@ export default function WorkoutRunner({
 
   const doneSets = logs.filter((l) => l.exerciseId === item.exerciseId).length;
   const isLast = index === plan.items.length - 1;
+  const warmups = warmupSets({
+    workWeight: item.weight,
+    measure: item.measure,
+    usesBodyweight: item.usesBodyweight,
+  });
 
   function addSet() {
-    const numericWeight = Number(weight.replace(",", "."));
     const numericReps = Number(reps);
     if (!Number.isFinite(numericReps) || numericReps <= 0) return;
-    if (weight.trim() !== "" && !Number.isFinite(numericWeight)) return;
+
+    const extra = Number(extraWeight.replace(",", "."));
+    const entered = Number(weight.replace(",", "."));
+    const base = isBodyweight ? (bodyWeight ?? 0) + (Number.isFinite(extra) ? extra : 0) : entered;
 
     const log: SetLog = {
       id: crypto.randomUUID(),
       workoutId,
       exerciseId: item.exerciseId,
       setIndex: doneSets + 1,
-      weight: Number.isFinite(numericWeight) ? numericWeight : 0,
+      weight: isBodyweight ? base : Number.isFinite(base) ? base : 0,
       reps: numericReps,
       rpe,
       isWarmup: false,
@@ -118,11 +131,20 @@ export default function WorkoutRunner({
             <span className="hint">Цель</span>
             <div className="runner__goal">
               {item.sets} × {item.repLow}–{item.repHigh}
+              {isTime ? " с" : ""}
             </div>
           </div>
           <div>
             <span className="hint">Вес</span>
-            <div className="runner__goal">{item.weight === null ? "подбери" : `${item.weight} кг`}</div>
+            <div className="runner__goal">
+              {isBodyweight
+                ? bodyWeight
+                  ? `свой ${bodyWeight} кг`
+                  : "свой вес"
+                : item.weight === null
+                  ? "подбери"
+                  : `${item.weight} кг`}
+            </div>
           </div>
           <div>
             <span className="hint">RPE</span>
@@ -135,6 +157,41 @@ export default function WorkoutRunner({
         </button>
       </section>
 
+      {warmups.length > 0 && (
+        <section className="card card--muted">
+          <h2 className="card__title">Разминка перед рабочими подходами</h2>
+          <table className="plan__table">
+            <thead>
+              <tr>
+                <th>Подход</th>
+                <th>%</th>
+                <th>Вес</th>
+                <th>Повторы</th>
+              </tr>
+            </thead>
+            <tbody>
+              {warmups.map((w) => (
+                <tr key={`${w.percent}-${w.weight}`}>
+                  <td>разминочный</td>
+                  <td>{w.percent} %</td>
+                  <td>{w.weight} кг</td>
+                  <td>{w.reps}</td>
+                </tr>
+              ))}
+              <tr>
+                <td>рабочие</td>
+                <td>—</td>
+                <td>{item.weight} кг</td>
+                <td>
+                  {item.repLow}–{item.repHigh}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="hint">Разминочные подходы не записываем — в анализ идут только рабочие.</p>
+        </section>
+      )}
+
       {restLeft !== null && (
         <section className="card card--rest">
           <div className="rest__row">
@@ -142,7 +199,11 @@ export default function WorkoutRunner({
             <span className="hint">отдых</span>
           </div>
           <div className="chips">
-            <button type="button" className="chip" onClick={() => setRestLeft((v) => Math.max(0, (v ?? 15) - 15))}>
+            <button
+              type="button"
+              className="chip"
+              onClick={() => setRestLeft((v) => Math.max(0, (v ?? 15) - 15))}
+            >
               −15 c
             </button>
             <button type="button" className="chip" onClick={() => setRestLeft(null)}>
@@ -158,27 +219,45 @@ export default function WorkoutRunner({
           {doneSets >= item.sets ? " — норма выполнена" : ` из ${item.sets}`}
         </h2>
 
-        <div className="row">
-          <label className="field field--half">
-            <span className="field__label">Вес, кг</span>
+        {isBodyweight ? (
+          <div className="row">
+            <label className="field field--half">
+              <span className="field__label">Свой вес</span>
+              <input className="input" value={bodyWeight ? `${bodyWeight} кг` : "не указан"} readOnly />
+            </label>
+            <label className="field field--half">
+              <span className="field__label">Доп. вес, кг</span>
+              <input
+                className="input"
+                inputMode="decimal"
+                placeholder="0"
+                value={extraWeight}
+                onChange={(e) => setExtraWeight(e.target.value)}
+              />
+            </label>
+          </div>
+        ) : (
+          <label className="field">
+            <span className="field__label">Вес снаряда, кг</span>
             <input
               className="input"
               inputMode="decimal"
               value={weight}
-              placeholder="свой вес"
+              placeholder="0"
               onChange={(e) => setWeight(e.target.value)}
             />
           </label>
-          <label className="field field--half">
-            <span className="field__label">Повторы</span>
-            <input
-              className="input"
-              inputMode="numeric"
-              value={reps}
-              onChange={(e) => setReps(e.target.value)}
-            />
-          </label>
-        </div>
+        )}
+
+        <label className="field">
+          <span className="field__label">{isTime ? "Секунды" : "Повторы"}</span>
+          <input
+            className="input"
+            inputMode="numeric"
+            value={reps}
+            onChange={(e) => setReps(e.target.value)}
+          />
+        </label>
 
         <div className="field">
           <span className="field__label">Насколько тяжело (1–10)</span>
@@ -194,9 +273,7 @@ export default function WorkoutRunner({
               </button>
             ))}
           </div>
-          <span className="hint">
-            8 — ещё 2 повтора в запасе, 10 — последний на пределе
-          </span>
+          <span className="hint">8 — ещё 2 повтора в запасе, 10 — последний на пределе</span>
         </div>
 
         <button type="button" className="button" onClick={addSet}>
@@ -211,6 +288,7 @@ export default function WorkoutRunner({
                 <li key={l.id}>
                   <span>
                     {l.setIndex}. {l.weight > 0 ? `${l.weight} кг` : "свой вес"} × {l.reps}
+                    {isTime ? " с" : ""}
                   </span>
                   <span className="hint">RPE {l.rpe}</span>
                 </li>
