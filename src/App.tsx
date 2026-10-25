@@ -20,7 +20,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <span className="brand">Gym Coach</span>
-        <span className="phase">P0</span>
+        <span className="phase">P1</span>
       </header>
 
       <main className="content">

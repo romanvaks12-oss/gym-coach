@@ -91,7 +91,7 @@ export default function SettingsScreen() {
         </button>
       </section>
 
-      <p className="hint">Схема данных: v{settings?.schemaVersion ?? 1} · P0</p>
+      <p className="hint">Схема данных: v{settings?.schemaVersion ?? 1} · P1</p>
     </div>
   );
 }
