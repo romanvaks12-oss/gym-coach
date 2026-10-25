@@ -62,6 +62,10 @@ export const db = {
   put<T>(store: StoreName, value: T): Promise<IDBValidKey> {
     return tx<IDBValidKey>(store, "readwrite", (s) => s.put(value as never));
   },
+  /** Для хранилищ с ключом вне записи (meta) */
+  putKey<T>(store: StoreName, key: string, value: T): Promise<IDBValidKey> {
+    return tx<IDBValidKey>(store, "readwrite", (s) => s.put(value as never, key));
+  },
   get<T>(store: StoreName, key: string): Promise<T | undefined> {
     return tx<T | undefined>(store, "readonly", (s) => s.get(key) as IDBRequest<T | undefined>);
   },
@@ -78,7 +82,7 @@ export async function loadSettings(): Promise<AppSettings> {
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
-  await db.put("meta", settings);
+  await db.putKey("meta", SETTINGS_KEY, settings);
 }
 
 export interface ExportPayload {

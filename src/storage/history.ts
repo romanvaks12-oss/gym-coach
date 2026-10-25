@@ -1,3 +1,4 @@
+import { daysBetween, type DayType } from "../core/plan";
 import type { PerformedSet } from "../core/progression";
 import type { SetLog, Workout } from "../types";
 import { db } from "./db";
@@ -24,4 +25,23 @@ export async function loadHistory(): Promise<PerformedSet[]> {
     });
   }
   return history;
+}
+
+const LAST_DAY_KEY = "lastDay";
+
+export interface LastDay {
+  dayType: DayType;
+  date: string;
+}
+
+/** Тип прошлой тренировки — для ротации «верх/низ» без повторов подряд. */
+export async function loadLastDay(todayIso: string): Promise<LastDay | null> {
+  const saved = await db.get<LastDay>("meta", LAST_DAY_KEY);
+  if (!saved?.dayType) return null;
+  // Дольше трёх дней паузы — ротация уже не важна, начинаем заново.
+  return daysBetween(saved.date, todayIso) <= 3 ? saved : null;
+}
+
+export async function saveLastDay(dayType: DayType, date: string): Promise<void> {
+  await db.putKey("meta", LAST_DAY_KEY, { dayType, date });
 }

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PlanOption } from "../core/plan";
 import { nowIso } from "../core/dates";
-import { warmupSets } from "../core/progression";
 import type { Exercise, SetLog } from "../types";
 import ExerciseSheet from "../components/ExerciseSheet";
 
@@ -72,11 +71,6 @@ export default function WorkoutRunner({
 
   const doneSets = logs.filter((l) => l.exerciseId === item.exerciseId).length;
   const isLast = index === plan.items.length - 1;
-  const warmups = warmupSets({
-    workWeight: item.weight,
-    measure: item.measure,
-    usesBodyweight: item.usesBodyweight,
-  });
 
   function addSet() {
     const numericReps = Number(reps);
@@ -156,41 +150,6 @@ export default function WorkoutRunner({
           Как делать и что работает
         </button>
       </section>
-
-      {warmups.length > 0 && (
-        <section className="card card--muted">
-          <h2 className="card__title">Разминка перед рабочими подходами</h2>
-          <table className="plan__table">
-            <thead>
-              <tr>
-                <th>Подход</th>
-                <th>%</th>
-                <th>Вес</th>
-                <th>Повторы</th>
-              </tr>
-            </thead>
-            <tbody>
-              {warmups.map((w) => (
-                <tr key={`${w.percent}-${w.weight}`}>
-                  <td>разминочный</td>
-                  <td>{w.percent} %</td>
-                  <td>{w.weight} кг</td>
-                  <td>{w.reps}</td>
-                </tr>
-              ))}
-              <tr>
-                <td>рабочие</td>
-                <td>—</td>
-                <td>{item.weight} кг</td>
-                <td>
-                  {item.repLow}–{item.repHigh}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <p className="hint">Разминочные подходы не записываем — в анализ идут только рабочие.</p>
-        </section>
-      )}
 
       {restLeft !== null && (
         <section className="card card--rest">

@@ -40,6 +40,16 @@ export default function PlanPicker({
         )}
       </section>
 
+      {plans.length === 0 && (
+        <section className="card">
+          <h2 className="card__title">Сегодня лучше восстановиться</h2>
+          <p className="card__text">
+            Все группы, под которые есть упражнения, либо болят, либо тренировались вчера.
+            Мышцы растут во время отдыха: сегодня — сон, еда и прогулка, завтра соберём план заново.
+          </p>
+        </section>
+      )}
+
       {plans.map((plan) => (
         <section key={plan.id} className="card">
           <header className="plan__head">

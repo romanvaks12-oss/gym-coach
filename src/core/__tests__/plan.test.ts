@@ -131,4 +131,70 @@ describe("buildPlans", () => {
       expect(bench.reason.length).toBeGreaterThan(0);
     }
   });
+
+  it("спина вчера — упражнений на спину и широчайшие сегодня нет", () => {
+    const yesterday = "2026-10-24";
+    const history = [
+      set("bb-row", yesterday),
+      set("bodyweight-pull-up", yesterday),
+      set("machine-lat-pulldown", yesterday),
+    ];
+    const plans = buildPlans({
+      brief: brief(),
+      readiness: computeReadiness(brief()),
+      history,
+      exercises: EXERCISES,
+      todayIso: TODAY,
+    });
+    expect(plans.length).toBeGreaterThan(0);
+    for (const plan of plans) {
+      for (const item of plan.items) {
+        const ex = EXERCISES.find((e) => e.id === item.exerciseId)!;
+        expect(["back", "lats"]).not.toContain(ex.primaryMuscle);
+      }
+    }
+  });
+
+  it("после верха предлагает низ первым", () => {
+    const history = [set("bb-bench-press", "2026-10-23"), set("bb-row", "2026-10-23")];
+    const plans = buildPlans({
+      brief: brief(),
+      readiness: computeReadiness(brief()),
+      history,
+      exercises: EXERCISES,
+      todayIso: TODAY,
+      lastDayType: "upper",
+    });
+    expect(plans[0].dayType).toBe("lower");
+  });
+
+  it("подтягивания: 2–3 повтора и не больше 3 подходов", () => {
+    const custom = EXERCISES.filter((e) =>
+      [
+        "bodyweight-pull-up",
+        "bb-bench-press",
+        "bb-overhead-press",
+        "bb-curl",
+        "cable-triceps-pushdown",
+        "bodyweight-plank",
+      ].includes(e.id),
+    );
+    const history = [
+      { ...set("bodyweight-pull-up", "2026-10-22"), reps: 2, weight: 0 },
+      set("bb-bench-press", "2026-10-22"),
+    ];
+    const plans = buildPlans({
+      brief: brief(),
+      readiness: computeReadiness(brief()),
+      history,
+      exercises: custom,
+      todayIso: TODAY,
+    });
+    const pullUp = plans[0].items.find((i) => i.exerciseId === "bodyweight-pull-up");
+    expect(pullUp).toBeDefined();
+    expect(pullUp!.sets).toBeLessThanOrEqual(3);
+    expect(pullUp!.repLow).toBeGreaterThanOrEqual(2);
+    expect(pullUp!.repHigh).toBeLessThanOrEqual(4);
+    expect(pullUp!.usesBodyweight).toBe(true);
+  });
 });

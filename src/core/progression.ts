@@ -75,7 +75,7 @@ export function nextTarget(params: {
   const maxRpe = Math.max(...lastSets.map((s) => s.rpe));
 
   if (params.usesBodyweight) {
-    const nextReps = Math.min(repHigh + 5, reps + 1);
+    const nextReps = Math.min(repHigh + 2, reps + 1);
     return {
       weight: null,
       repLow,

@@ -5,7 +5,7 @@ import { buildPlans, type PlanOption } from "../core/plan";
 import { computeReadiness, type ReadinessResult } from "../core/readiness";
 import { nowIso, todayIso } from "../core/dates";
 import { db } from "../storage/db";
-import { loadHistory } from "../storage/history";
+import { loadHistory, loadLastDay, saveLastDay } from "../storage/history";
 import BriefForm from "./BriefForm";
 import PlanPicker from "./PlanPicker";
 import WorkoutRunner from "./WorkoutRunner";
@@ -28,14 +28,16 @@ export default function TodayScreen() {
 
   async function onBrief(brief: Brief) {
     setBusy(true);
+    const today = todayIso();
     const readiness = computeReadiness(brief);
-    const history = await loadHistory();
+    const [history, lastDay] = await Promise.all([loadHistory(), loadLastDay(today)]);
     const plans = buildPlans({
       brief,
       readiness,
       history,
       exercises: EXERCISES,
-      todayIso: todayIso(),
+      todayIso: today,
+      lastDayType: lastDay?.dayType ?? null,
     });
     setBusy(false);
     setStep({ kind: "plans", plans, readiness, brief });
@@ -83,6 +85,7 @@ export default function TodayScreen() {
         pendingSync: true,
       });
     }
+    await saveLastDay(plan.dayType, workout.date);
 
     const tonnage = logs.reduce((sum, l) => sum + l.weight * l.reps, 0);
     setStep({

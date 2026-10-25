@@ -536,24 +536,68 @@ body {
 .musclemap {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  background: var(--surface-muted);
+  gap: 6px 10px;
+  background:
+    radial-gradient(120% 70% at 50% 8%, rgba(255, 255, 255, 0.055), transparent 65%),
+    var(--surface-muted);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px;
+  border-radius: 14px;
+  padding: 12px 10px 8px;
 }
 
 .musclemap__view {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .musclemap__view svg {
   width: 100%;
   height: auto;
-  max-height: 190px;
+  max-height: 232px;
+}
+
+.musclemap__body,
+.musclemap__limb {
+  fill: #2a303b;
+  stroke: #14181f;
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+}
+
+.muscle {
+  fill: #3a4252;
+  stroke: rgba(255, 255, 255, 0.045);
+  stroke-width: 0.4;
+  stroke-linejoin: round;
+  transition: fill 0.15s ease;
+}
+
+.muscle--secondary {
+  fill: #567f68;
+  opacity: 0.92;
+}
+
+.muscle--primary {
+  fill: var(--accent);
+  stroke: #eafff3;
+  stroke-width: 0.5;
+  filter: drop-shadow(0 0 3.5px rgba(125, 211, 160, 0.55));
+}
+
+.musclemap__legend {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.musclemap__legend .dot {
+  margin-right: 5px;
+  vertical-align: middle;
 }
 
 .dot {
@@ -619,6 +663,26 @@ body {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  table-layout: fixed;
+}
+
+.plan__table th:nth-child(2),
+.plan__table td:nth-child(2) {
+  width: 40px;
+}
+
+.plan__table th:nth-child(3),
+.plan__table td:nth-child(3) {
+  width: 56px;
+}
+
+.plan__table th:nth-child(4),
+.plan__table td:nth-child(4) {
+  width: 68px;
+}
+
+.plan__table td:first-child {
+  overflow-wrap: anywhere;
 }
 
 .plan__table th {
