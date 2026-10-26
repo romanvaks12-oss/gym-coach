@@ -4,11 +4,19 @@ import { EXERCISES } from "../domain/catalog";
 import { buildPlans, type PlanOption } from "../core/plan";
 import { computeReadiness, type ReadinessResult } from "../core/readiness";
 import { nowIso, todayIso } from "../core/dates";
-import { db } from "../storage/db";
+import { db, loadSettings } from "../storage/db";
+import { isConfigured, syncNow } from "../storage/sync";
 import { loadHistory, loadLastDay, saveLastDay } from "../storage/history";
 import BriefForm from "./BriefForm";
 import PlanPicker from "./PlanPicker";
 import WorkoutRunner from "./WorkoutRunner";
+
+type SyncNote =
+  | { kind: "idle" }
+  | { kind: "sending" }
+  | { kind: "off" }
+  | { kind: "ok"; total: number }
+  | { kind: "error"; message: string };
 
 type Step =
   | { kind: "brief" }
@@ -25,6 +33,24 @@ type Step =
 export default function TodayScreen() {
   const [step, setStep] = useState<Step>({ kind: "brief" });
   const [busy, setBusy] = useState(false);
+  const [sync, setSync] = useState<SyncNote>({ kind: "idle" });
+
+  /** Тихий синк после тренировки: никогда не блокирует сводку и не мешает сохранить данные. */
+  async function trySync() {
+    setSync({ kind: "sending" });
+    try {
+      const settings = await loadSettings();
+      if (!isConfigured(settings)) {
+        setSync({ kind: "off" });
+        return;
+      }
+      const result = await syncNow(settings);
+      if (result.ok) setSync({ kind: "ok", total: result.pushed + result.pulled });
+      else setSync({ kind: "error", message: result.error ?? "не получилось" });
+    } catch {
+      setSync({ kind: "error", message: "сеть недоступна" });
+    }
+  }
 
   async function onBrief(brief: Brief) {
     setBusy(true);
@@ -95,6 +121,7 @@ export default function TodayScreen() {
       minutes: durationMin,
       exerciseCount: new Set(logs.map((l) => l.exerciseId)).size,
     });
+    void trySync();
   }
 
   if (busy) {
@@ -158,10 +185,36 @@ export default function TodayScreen() {
           </div>
         </div>
       </section>
-      <p className="hint">
-        Данные уже в локальной базе. Синхронизация с Google Sheets появится в следующей фазе.
+      <p
+        className={
+          sync.kind === "error"
+            ? "notice notice--warn"
+            : sync.kind === "ok"
+              ? "notice notice--ok"
+              : "hint"
+        }
+      >
+        {sync.kind === "ok"
+          ? `Данные в локальной базе и в Google Sheets (${sync.total} записей).`
+          : sync.kind === "sending"
+            ? "Данные в локальной базе. Отправляю в таблицу…"
+            : sync.kind === "error"
+              ? `Данные в локальной базе, в таблицу не ушли: ${sync.message}. Отправим позже.`
+              : "Данные в локальной базе. Синк с Google Sheets не настроен — включается в «Настройках»."}
       </p>
-      <button type="button" className="button" onClick={() => setStep({ kind: "brief" })}>
+      {sync.kind === "error" && (
+        <button type="button" className="button button--ghost" onClick={() => void trySync()}>
+          Отправить ещё раз
+        </button>
+      )}
+      <button
+        type="button"
+        className="button"
+        onClick={() => {
+          setSync({ kind: "idle" });
+          setStep({ kind: "brief" });
+        }}
+      >
         Заполнить бриф заново
       </button>
     </div>

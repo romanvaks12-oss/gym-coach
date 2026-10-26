@@ -1,227 +1,223 @@
+import { useId } from "react";
 import type { MuscleGroup } from "../types";
 
+/**
+ * Атлас тела: перед и спина. Рисуем половину силуэта и зеркалим — так левая
+ * и правая стороны всегда совпадают. Стиль — анатомический плакат: контурная
+ * линия, «мясные» зоны отдельными формами, активные группы заливаются акцентом.
+ *
+ * Фигура — в память о Вадиме Иванове.
+ */
 interface Part {
   view: "front" | "back";
   muscles: MuscleGroup[];
-  /** Путь в координатах 120×250 */
+  /** Путь в системе 200×460; зеркалится автоматически */
   d: string;
+  /** Форма по центру: не зеркалим (пресс, позвоночник) */
+  center?: boolean;
 }
 
-/**
- * Схематичный, но человеческий силуэт: перед и спина.
- * Основа — тело, сверху — «мясные» зоны. Подсвечиваем только рабочие группы.
- */
+interface Base {
+  view: "front" | "back";
+  d: string;
+  center?: boolean;
+}
+
+/** Контур тела, который рисуется под мышцами. */
+const BODY: Base[] = [
+  // голова и шея
+  {
+    view: "front",
+    center: true,
+    d: "M100,17 C108,17 114,25 114,35 C114,46 108,53 100,53 C92,53 86,46 86,35 C86,25 92,17 100,17 Z",
+  },
+  {
+    view: "back",
+    center: true,
+    d: "M100,17 C108,17 114,25 114,35 C114,46 108,53 100,53 C92,53 86,46 86,35 C86,25 92,17 100,17 Z",
+  },
+  {
+    view: "front",
+    center: true,
+    d: "M90,48 C91,56 90,61 86,65 L114,65 C110,61 109,56 110,48 Z",
+  },
+  {
+    view: "back",
+    center: true,
+    d: "M90,48 C91,56 90,61 86,65 L114,65 C110,61 109,56 110,48 Z",
+  },
+  // торс
+  {
+    view: "front",
+    center: true,
+    d: "M72,74 C64,81 60,95 62,109 C64,124 69,139 75,151 C79,161 79,171 77,181 C75,192 79,203 85,211 L86,220 L114,220 L115,211 C121,203 125,192 123,181 C121,171 121,161 125,151 C131,139 136,124 138,109 C140,95 137,80 128,74 C121,68 111,64 100,64 C89,64 79,68 72,74 Z",
+  },
+  {
+    view: "back",
+    center: true,
+    d: "M72,74 C64,81 60,95 62,109 C64,124 69,139 75,151 C79,161 79,171 77,181 C75,192 79,203 85,211 L86,220 L114,220 L115,211 C121,203 125,192 123,181 C121,171 121,161 125,151 C131,139 136,124 138,109 C140,95 137,80 128,74 C121,68 111,64 100,64 C89,64 79,68 72,74 Z",
+  },
+  // плечо и рука
+  {
+    view: "front",
+    d: "M60,73 C52,79 47,93 46,109 C45,135 46,161 49,187 C50,195 52,199 56,199 L68,199 C70,193 71,185 70,177 C69,153 69,125 70,105 C70,89 66,79 60,73 Z",
+  },
+  {
+    view: "back",
+    d: "M60,73 C52,79 47,93 46,109 C45,135 46,161 49,187 C50,195 52,199 56,199 L68,199 C70,193 71,185 70,177 C69,153 69,125 70,105 C70,89 66,79 60,73 Z",
+  },
+  // предплечье и кисть
+  {
+    view: "front",
+    d: "M56,199 C52,223 48,253 45,283 C44,293 43,299 43,305 C39,311 37,321 40,328 C43,334 49,335 53,331 C57,327 57,317 55,309 L55,301 C58,281 62,251 67,221 C68,213 69,205 69,199 Z",
+  },
+  {
+    view: "back",
+    d: "M56,199 C52,223 48,253 45,283 C44,293 43,299 43,305 C39,311 37,321 40,328 C43,334 49,335 53,331 C57,327 57,317 55,309 L55,301 C58,281 62,251 67,221 C68,213 69,205 69,199 Z",
+  },
+  // нога + стопа
+  {
+    view: "front",
+    d: "M82,210 C76,222 73,242 74,264 C74,288 78,312 83,334 C82,342 81,348 81,354 C78,372 78,396 81,416 C82,425 84,431 86,433 L97,433 L97,415 C96,395 96,373 97,355 C98,345 99,339 100,334 C99,312 98,288 98,264 C98,242 99,224 100,212 Z",
+  },
+  {
+    view: "back",
+    d: "M82,210 C76,222 73,242 74,264 C74,288 78,312 83,334 C82,342 81,348 81,354 C78,372 78,396 81,416 C82,425 84,431 86,433 L97,433 L97,415 C96,395 96,373 97,355 C98,345 99,339 100,334 C99,312 98,288 98,264 C98,242 99,224 100,212 Z",
+  },
+  {
+    view: "front",
+    d: "M86,433 L97,433 L99,440 C99,444 94,446 89,446 L83,444 C81,441 82,436 86,433 Z",
+  },
+  {
+    view: "back",
+    d: "M86,433 L97,433 L99,440 C99,444 94,446 89,446 L83,444 C81,441 82,436 86,433 Z",
+  },
+];
+
 const MUSCLES: Part[] = [
-  // ───────── перед ─────────
+  // ─────────── перед ───────────
   {
     view: "front",
     muscles: ["traps"],
-    d: "M50 35 C54 38 66 38 70 35 L73.5 41.5 L60 48 L46.5 41.5 Z",
+    d: "M100,56 L78,70 C75,74 77,79 82,80 L100,67 Z",
   },
   {
     view: "front",
     muscles: ["shoulders"],
-    d: "M37 43 C31 44 27 49 26 56 C25.6 61.5 26.4 66 28 69 C31 68.5 34 66.5 36 63.5 C36.6 57 36.7 49 37 43 Z",
-  },
-  {
-    view: "front",
-    muscles: ["shoulders"],
-    d: "M83 43 C89 44 93 49 94 56 C94.4 61.5 93.6 66 92 69 C89 68.5 86 66.5 84 63.5 C83.4 57 83.3 49 83 43 Z",
+    d: "M74,72 C64,74 56,83 53,95 C51,105 53,114 57,119 C63,121 69,116 72,108 C74,98 74,84 74,72 Z",
   },
   {
     view: "front",
     muscles: ["chest"],
-    d: "M47 47 C52.5 43.5 58 45 59 49 L59 66 C56 70 49.5 69 47 64 C45.5 58.5 45.6 51.5 47 47 Z",
-  },
-  {
-    view: "front",
-    muscles: ["chest"],
-    d: "M73 47 C67.5 43.5 62 45 61 49 L61 66 C64 70 70.5 69 73 64 C74.5 58.5 74.4 51.5 73 47 Z",
+    d: "M100,82 C92,80 83,82 78,89 C74,95 74,105 77,113 C80,121 90,127 100,124 Z",
   },
   {
     view: "front",
     muscles: ["biceps"],
-    d: "M28 65 C26.4 74 26.4 84 28 92 L36.5 90 C37.2 83 37.2 73 36.4 65 Z",
-  },
-  {
-    view: "front",
-    muscles: ["biceps"],
-    d: "M92 65 C93.6 74 93.6 84 92 92 L83.5 90 C82.8 83 82.8 73 83.6 65 Z",
+    d: "M62,80 C56,88 53,102 53,118 C53,138 55,160 57,180 L67,182 C68,160 69,136 69,116 C69,98 68,86 66,79 Z",
   },
   {
     view: "front",
     muscles: ["forearms"],
-    d: "M27.6 97 C26.2 108 26.6 122 28.4 134 L35 132 C35.7 120 35.8 108 35.2 96 Z",
+    d: "M57,192 C54,216 50,246 47,276 C46,286 45,294 45,300 L54,302 C57,284 61,258 64,232 C66,216 67,204 67,194 Z",
   },
-  {
-    view: "front",
-    muscles: ["forearms"],
-    d: "M92.4 97 C93.8 108 93.4 122 91.6 134 L85 132 C84.3 120 84.2 108 84.8 96 Z",
-  },
-  // пресс: три пары сегментов
-  { view: "front", muscles: ["core"], d: "M54.6 70.5 H59.3 V78 H54.6 Z" },
-  { view: "front", muscles: ["core"], d: "M60.7 70.5 H65.4 V78 H60.7 Z" },
-  { view: "front", muscles: ["core"], d: "M54.3 79.5 H59.3 V87 H54.3 Z" },
-  { view: "front", muscles: ["core"], d: "M60.7 79.5 H65.7 V87 H60.7 Z" },
-  { view: "front", muscles: ["core"], d: "M54 88.5 H59.4 V96.5 H54 Z" },
-  { view: "front", muscles: ["core"], d: "M60.6 88.5 H66 V96.5 H60.6 Z" },
-  { view: "front", muscles: ["core"], d: "M53 97.5 H67 V106.5 C63 109 57 109 53 106.5 Z" },
+  // пресс: 4 пары сегментов
+  { view: "front", muscles: ["core"], center: true, d: "M89,129 h9 v11 h-9 z" },
+  { view: "front", muscles: ["core"], center: true, d: "M102,129 h9 v11 h-9 z" },
+  { view: "front", muscles: ["core"], center: true, d: "M89,143 h9 v11 h-9 z" },
+  { view: "front", muscles: ["core"], center: true, d: "M102,143 h9 v11 h-9 z" },
+  { view: "front", muscles: ["core"], center: true, d: "M89,157 h9 v11 h-9 z" },
+  { view: "front", muscles: ["core"], center: true, d: "M102,157 h9 v11 h-9 z" },
+  { view: "front", muscles: ["core"], center: true, d: "M89,171 h9 v11 h-9 z" },
+  { view: "front", muscles: ["core"], center: true, d: "M102,171 h9 v11 h-9 z" },
   // косые
   {
     view: "front",
     muscles: ["core"],
-    d: "M48.6 72 C46.6 80 46.7 92 49.4 101.5 L52.6 99.5 L53.4 74 Z",
+    d: "M78,130 C75,143 75,159 78,173 C80,181 84,186 88,188 L88,131 Z",
   },
-  {
-    view: "front",
-    muscles: ["core"],
-    d: "M71.4 72 C73.4 80 73.3 92 70.6 101.5 L67.4 99.5 L66.6 74 Z",
-  },
-  {
-    view: "front",
-    muscles: ["quads"],
-    d: "M44 127 C42 142 41.6 160 43 178 L44.6 192 L57 190 C57.6 172 57.6 149 57 129 Z",
-  },
+  // зубчатые — тонкие полоски под грудью
+  { view: "front", muscles: ["core"], d: "M79,119 L86,121 L86,124 L79,122 Z" },
+  { view: "front", muscles: ["core"], d: "M79,125 L87,127 L87,130 L79,128 Z" },
   {
     view: "front",
     muscles: ["quads"],
-    d: "M76 127 C78 142 78.4 160 77 178 L75.4 192 L63 190 C62.4 172 62.4 149 63 129 Z",
+    d: "M86,220 C79,229 76,245 77,265 C78,287 82,309 86,329 L100,331 C99,311 98,287 98,263 C98,241 99,227 100,221 Z",
   },
   {
     view: "front",
     muscles: ["calves"],
-    d: "M44.6 201 C43.6 212 44.6 226 46.8 236.5 L55.2 234.5 C56.2 222 56.2 210 55.2 201 Z",
-  },
-  {
-    view: "front",
-    muscles: ["calves"],
-    d: "M75.4 201 C76.4 212 75.4 226 73.2 236.5 L64.8 234.5 C63.8 222 63.8 210 64.8 201 Z",
+    d: "M83,344 C80,360 80,380 82,400 C83,412 85,422 86,426 L95,426 C94,412 93,392 93,372 C93,358 94,350 95,342 Z",
   },
 
-  // ───────── спина ─────────
+  // ─────────── спина ───────────
   {
     view: "back",
     muscles: ["traps"],
-    d: "M51.5 34 L60 43 L68.5 34 L74 41 L60 60 L46 41 Z",
+    d: "M100,56 L80,71 C76,76 79,83 85,88 L100,108 Z",
   },
   {
     view: "back",
     muscles: ["shoulders"],
-    d: "M37 43 C31 44 27 49 26 56 C25.6 61.5 26.4 66 28 69 C31 68.5 34 66.5 36 63.5 C36.6 57 36.7 49 37 43 Z",
-  },
-  {
-    view: "back",
-    muscles: ["shoulders"],
-    d: "M83 43 C89 44 93 49 94 56 C94.4 61.5 93.6 66 92 69 C89 68.5 86 66.5 84 63.5 C83.4 57 83.3 49 83 43 Z",
+    d: "M74,72 C64,74 56,83 53,95 C51,105 53,114 57,119 C63,121 69,116 72,108 C74,98 74,84 74,72 Z",
   },
   {
     view: "back",
     muscles: ["lats"],
-    d: "M57 61 C52 62.5 47.5 67 46 75 C44.6 83 45.4 91 47.5 96 L57.5 92 Z",
-  },
-  {
-    view: "back",
-    muscles: ["lats"],
-    d: "M63 61 C68 62.5 72.5 67 74 75 C75.4 83 74.6 91 72.5 96 L62.5 92 Z",
+    d: "M80,89 C72,98 69,118 72,141 C74,159 80,173 88,181 C92,183 95,180 95,171 C95,148 93,120 91,104 C89,95 85,89 80,89 Z",
   },
   {
     view: "back",
     muscles: ["back"],
-    d: "M55.4 62 H64.6 V91 H55.4 Z",
-  },
-  {
-    view: "back",
-    muscles: ["back"],
-    d: "M56 93 C55 104 55 116 56.2 126 L59.3 126 L59.3 93 Z",
-  },
-  {
-    view: "back",
-    muscles: ["back"],
-    d: "M64 93 C65 104 65 116 63.8 126 L60.7 126 L60.7 93 Z",
+    d: "M90,112 C88,132 88,158 90,182 L99,186 L99,112 Z",
   },
   {
     view: "back",
     muscles: ["triceps"],
-    d: "M28 65 C26.6 74 26.8 85 28.4 93 L36.5 91 C37 82 37 72 36.4 65 Z",
-  },
-  {
-    view: "back",
-    muscles: ["triceps"],
-    d: "M92 65 C93.4 74 93.2 85 91.6 93 L83.5 91 C83 82 83 72 83.6 65 Z",
+    d: "M62,80 C55,89 52,104 52,122 C52,142 54,164 57,182 L67,183 C68,162 69,138 69,118 C69,100 68,87 66,79 Z",
   },
   {
     view: "back",
     muscles: ["forearms"],
-    d: "M27.6 97 C26.2 108 26.6 122 28.4 134 L35 132 C35.7 120 35.8 108 35.2 96 Z",
-  },
-  {
-    view: "back",
-    muscles: ["forearms"],
-    d: "M92.4 97 C93.8 108 93.4 122 91.6 134 L85 132 C84.3 120 84.2 108 84.8 96 Z",
+    d: "M57,192 C54,216 50,246 47,276 C46,286 45,294 45,300 L54,302 C57,284 61,258 64,232 C66,216 67,204 67,194 Z",
   },
   {
     view: "back",
     muscles: ["glutes"],
-    d: "M60 112 C54 111 48.6 115 46.6 122 C45.2 129 47 136 51.5 139.5 C55 142 59 141.5 60 139 Z",
-  },
-  {
-    view: "back",
-    muscles: ["glutes"],
-    d: "M60 112 C66 111 71.4 115 73.4 122 C74.8 129 73 136 68.5 139.5 C65 142 61 141.5 60 139 Z",
+    d: "M98,196 C88,194 80,200 78,210 C76,222 79,234 85,240 C90,245 96,245 99,241 L99,206 Z",
   },
   {
     view: "back",
     muscles: ["hamstrings"],
-    d: "M44 141 C42 155 42 172 44 188 L57 186 C57.6 170 57.6 152 57 141 Z",
-  },
-  {
-    view: "back",
-    muscles: ["hamstrings"],
-    d: "M76 141 C78 155 78 172 76 188 L63 186 C62.4 170 62.4 152 63 141 Z",
+    d: "M85,246 C79,257 76,275 78,297 C79,313 82,327 86,336 L100,336 C99,320 98,296 98,272 C98,258 99,250 100,246 Z",
   },
   {
     view: "back",
     muscles: ["calves"],
-    d: "M44.8 200 C42.8 208 43.4 218 45.6 224.5 L54.8 222.5 C56.2 214 56.2 206 55.2 200 Z",
-  },
-  {
-    view: "back",
-    muscles: ["calves"],
-    d: "M75.2 200 C77.2 208 76.6 218 74.4 224.5 L65.2 222.5 C63.8 214 63.8 206 64.8 200 Z",
+    d: "M83,344 C77,360 77,384 81,404 C83,416 85,424 87,428 L96,428 C95,412 94,390 95,370 C95,358 96,350 98,342 Z",
   },
 ];
 
-/** Базовое тело: голова, шея, торс, руки, ноги, стопы */
-function Body() {
-  return (
-    <g className="musclemap__body">
-      <ellipse cx="60" cy="17" rx="11" ry="13.5" />
-      <path d="M54.5 28 H65.5 L67 38 H53 Z" />
-      <path d="M60 33 C51 33 44 36.5 41 42 C38 47 36.5 52 36 58 C35.6 64 37.5 72 39.5 78 C41 84 42 88 43 92 C42.5 100 42 108 43 114 C43.5 120 46 125 50 128 L60 130 L70 128 C74 125 76.5 120 77 114 C78 108 77.5 100 77 92 C78 88 79 84 80.5 78 C82.5 72 84.4 64 84 58 C83.5 52 82 47 79 42 C76 36.5 69 33 60 33 Z" />
-      <g className="musclemap__limb">
-        <path d="M37 44 C31 45 27.5 50 26.5 57 L25 86 C24.6 91 25.4 95 27 98 L26 134 C25.7 140 27 144 30 144 C33 144 34 140 33.8 134 L34.5 99 C36 96 36.8 92 37 87 L38 57 C38.2 50 38.6 45 37 44 Z" />
-        <rect x="26.6" y="142.5" width="7.6" height="12.5" rx="3.6" />
-      </g>
-      <g className="musclemap__limb">
-        <path d="M83 44 C89 45 92.5 50 93.5 57 L95 86 C95.4 91 94.6 95 93 98 L94 134 C94.3 140 93 144 90 144 C87 144 86 140 86.2 134 L85.5 99 C84 96 83.2 92 83 87 L82 57 C81.8 50 81.4 45 83 44 Z" />
-        <rect x="85.8" y="142.5" width="7.6" height="12.5" rx="3.6" />
-      </g>
-      <g className="musclemap__limb">
-        <path d="M43 122 C41 135 40.6 155 42 176 L43.6 196 L44.8 214 C44.8 226 45.8 236 47.2 241 L56 240 C57 232 57.5 222 57 212 L56.6 196 L57 176 C58 155 58.4 135 57 122 Z" />
-        <path d="M46.5 239.5 L56.5 238.5 L56.5 245.5 C56.5 248 53.5 248.8 50 248.8 L46.8 248.2 C45.4 246.4 45.4 242 46.5 239.5 Z" />
-      </g>
-      <g className="musclemap__limb">
-        <path d="M77 122 C79 135 79.4 155 78 176 L76.4 196 L75.2 214 C75.2 226 74.2 236 72.8 241 L64 240 C63 232 62.5 222 63 212 L63.4 196 L63 176 C62 155 61.6 135 63 122 Z" />
-        <path d="M73.5 239.5 L63.5 238.5 L63.5 245.5 C63.5 248 66.5 248.8 70 248.8 L73.2 248.2 C74.6 246.4 74.6 242 73.5 239.5 Z" />
-      </g>
-    </g>
-  );
-}
+/** Тонкие линии внутри форм: ключицы, разделение головок, позвоночник. */
+const DETAILS: Base[] = [
+  { view: "front", d: "M79,81 C87,75 94,73 100,75" },
+  { view: "front", center: true, d: "M100,82 L100,123" },
+  { view: "front", d: "M79,111 C87,119 94,122 100,122" },
+  { view: "front", d: "M89,225 C87,253 87,283 89,307" },
+  { view: "front", d: "M98,301 C94,313 92,323 92,330" },
+  { view: "front", d: "M90,349 C89,373 89,397 90,421" },
+  { view: "front", d: "M84,338 C88,336 92,336 96,338" },
+  { view: "back", center: true, d: "M100,60 L100,190" },
+  { view: "back", d: "M83,96 C89,101 95,107 99,115" },
+  { view: "back", center: true, d: "M100,196 L100,244" },
+  { view: "back", d: "M92,252 C90,282 91,312 94,334" },
+  { view: "back", d: "M89,352 C87,376 87,400 89,422" },
+];
 
 function level(part: Part, primary: MuscleGroup, secondary: MuscleGroup[]) {
-  if (part.muscles.includes(primary)) return "primary";
-  if (part.muscles.some((m) => secondary.includes(m))) return "secondary";
-  return "idle";
+  if (part.muscles.includes(primary)) return "muscle muscle--primary";
+  if (part.muscles.some((m) => secondary.includes(m))) return "muscle muscle--secondary";
+  return "muscle";
 }
 
 export default function MuscleMap({
@@ -231,34 +227,65 @@ export default function MuscleMap({
   primary: MuscleGroup;
   secondary: MuscleGroup[];
 }) {
-  const render = (view: "front" | "back") => (
-    <g className="musclemap__parts">
-      {MUSCLES.filter((part) => part.view === view).map((part, index) => {
-        const state = level(part, primary, secondary);
-        const className =
-          state === "primary"
-            ? "muscle muscle--primary"
-            : state === "secondary"
-              ? "muscle muscle--secondary"
-              : "muscle";
-        return <path key={`${view}-${index}`} d={part.d} className={className} />;
-      })}
-    </g>
+  const uid = useId().replace(/[:]/g, "");
+  const gradientId = `body-${uid}`;
+
+  const renderView = (view: "front" | "back") => (
+    <>
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#333a47" />
+          <stop offset="55%" stopColor="#2b313c" />
+          <stop offset="100%" stopColor="#232833" />
+        </linearGradient>
+      </defs>
+
+      <g className="musclemap__body" fill={`url(#${gradientId})`}>
+        {BODY.filter((part) => part.view === view).map((part, index) => (
+          <g key={`body-${view}-${index}`}>
+            <path d={part.d} />
+            {!part.center && <path d={part.d} transform="translate(200,0) scale(-1,1)" />}
+          </g>
+        ))}
+      </g>
+
+      <g className="musclemap__parts">
+        {MUSCLES.filter((part) => part.view === view).map((part, index) => (
+          <g key={`muscle-${view}-${index}`}>
+            <path d={part.d} className={level(part, primary, secondary)} />
+            {!part.center && (
+              <path
+                d={part.d}
+                className={level(part, primary, secondary)}
+                transform="translate(200,0) scale(-1,1)"
+              />
+            )}
+          </g>
+        ))}
+      </g>
+
+      <g className="musclemap__details">
+        {DETAILS.filter((part) => part.view === view).map((part, index) => (
+          <g key={`detail-${view}-${index}`}>
+            <path d={part.d} />
+            {!part.center && <path d={part.d} transform="translate(200,0) scale(-1,1)" />}
+          </g>
+        ))}
+      </g>
+    </>
   );
 
   return (
     <div className="musclemap">
       <figure className="musclemap__view">
-        <svg viewBox="0 0 120 252" role="img" aria-label="Передняя проекция тела">
-          <Body />
-          {render("front")}
+        <svg viewBox="0 0 200 460" role="img" aria-label="Передняя проекция тела">
+          {renderView("front")}
         </svg>
         <figcaption>перед</figcaption>
       </figure>
       <figure className="musclemap__view">
-        <svg viewBox="0 0 120 252" role="img" aria-label="Задняя проекция тела">
-          <Body />
-          {render("back")}
+        <svg viewBox="0 0 200 460" role="img" aria-label="Задняя проекция тела">
+          {renderView("back")}
         </svg>
         <figcaption>спина</figcaption>
       </figure>
@@ -272,6 +299,8 @@ export default function MuscleMap({
           помогает
         </span>
       </div>
+      <p className="musclemap__credit">контур — в память о Вадиме Иванове</p>
     </div>
   );
 }
+

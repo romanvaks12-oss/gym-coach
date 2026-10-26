@@ -66,6 +66,20 @@ export const db = {
   putKey<T>(store: StoreName, key: string, value: T): Promise<IDBValidKey> {
     return tx<IDBValidKey>(store, "readwrite", (s) => s.put(value as never, key));
   },
+  /** Запись пачки в одной транзакции — быстрее, чем N отдельных put */
+  putMany<T>(store: StoreName, values: T[]): Promise<void> {
+    if (values.length === 0) return Promise.resolve();
+    return openDb().then(
+      (db) =>
+        new Promise<void>((resolve, reject) => {
+          const t = db.transaction(store, "readwrite");
+          const s = t.objectStore(store);
+          for (const value of values) s.put(value as never);
+          t.oncomplete = () => resolve();
+          t.onerror = () => reject(t.error);
+        }),
+    );
+  },
   get<T>(store: StoreName, key: string): Promise<T | undefined> {
     return tx<T | undefined>(store, "readonly", (s) => s.get(key) as IDBRequest<T | undefined>);
   },

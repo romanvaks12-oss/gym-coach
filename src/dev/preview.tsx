@@ -2,6 +2,7 @@
  * Страница предпросмотра для проверки вёрстки без кликов:
  * http://127.0.0.1:5173/preview.html           — план, тренировка, карта мышц
  * http://127.0.0.1:5173/preview.html?view=progress — экран прогресса на демо-данных
+ * http://127.0.0.1:5173/preview.html?view=settings — экран настроек (синк, бэкап)
  *
  * В прод-сборку не попадает.
  */
@@ -9,6 +10,7 @@ import { createRoot } from "react-dom/client";
 import MuscleMap from "../components/MuscleMap";
 import PlanPicker from "../screens/PlanPicker";
 import WorkoutRunner from "../screens/WorkoutRunner";
+import SettingsScreen from "../screens/SettingsScreen";
 import { ProgressView } from "../screens/ProgressScreen";
 import { addDays } from "../core/analytics";
 import { buildPlans } from "../core/plan";
@@ -107,6 +109,17 @@ createRoot(document.getElementById("root")!).render(
         body={demoBody}
         todayIso={TODAY}
       />
+    </div>
+  ) : view === "settings" ? (
+    <div style={{ width: 390, margin: "0 auto", padding: 16 }}>
+      <SettingsScreen />
+    </div>
+  ) : view === "map" ? (
+    <div style={{ width: 390, margin: "0 auto", display: "grid", gap: 12, padding: 12 }}>
+      <MuscleMap primary="chest" secondary={["triceps", "shoulders"]} />
+      <MuscleMap primary="lats" secondary={["back", "biceps"]} />
+      <MuscleMap primary="quads" secondary={["glutes", "hamstrings"]} />
+      <MuscleMap primary="shoulders" secondary={["traps", "triceps"]} />
     </div>
   ) : (
     <div style={{ width: 390, margin: "0 auto", display: "grid", gap: 16 }}>
