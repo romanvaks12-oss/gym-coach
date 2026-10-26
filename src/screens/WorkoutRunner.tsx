@@ -216,9 +216,23 @@ export default function WorkoutRunner({
         <span className="hint">
           Упражнение {index + 1} из {plan.items.length} · {plan.title}
         </span>
-        <button type="button" className="linkbtn" onClick={onCancel}>
-          прервать
-        </button>
+        <span className="runner__nav">
+          {index > 0 && (
+            <button
+              type="button"
+              className="linkbtn"
+              onClick={() => {
+                setRestLeft(null);
+                setIndex((i) => Math.max(0, i - 1));
+              }}
+            >
+              ← пред.
+            </button>
+          )}
+          <button type="button" className="linkbtn" onClick={onCancel}>
+            прервать
+          </button>
+        </span>
       </div>
 
       <h1 className="screen__title">{item.name}</h1>

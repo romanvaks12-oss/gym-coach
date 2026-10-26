@@ -791,7 +791,7 @@ body {
 }
 
 .mini {
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid var(--line);
@@ -835,4 +835,10 @@ body {
   width: 0;
   height: 0;
   overflow: hidden;
+}
+
+.runner__nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
