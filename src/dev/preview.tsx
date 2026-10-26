@@ -1,18 +1,20 @@
 /**
  * Страница предпросмотра для проверки вёрстки без кликов:
- * http://127.0.0.1:5173/preview.html
+ * http://127.0.0.1:5173/preview.html           — план, тренировка, карта мышц
+ * http://127.0.0.1:5173/preview.html?view=progress — экран прогресса на демо-данных
  *
- * Показывает план (сгенерированный на тестовых данных), экран тренировки
- * и карту мышц для нескольких групп. В прод-сборку не попадает.
+ * В прод-сборку не попадает.
  */
 import { createRoot } from "react-dom/client";
 import MuscleMap from "../components/MuscleMap";
 import PlanPicker from "../screens/PlanPicker";
 import WorkoutRunner from "../screens/WorkoutRunner";
+import { ProgressView } from "../screens/ProgressScreen";
+import { addDays } from "../core/analytics";
 import { buildPlans } from "../core/plan";
 import { computeReadiness } from "../core/readiness";
 import { EXERCISES } from "../domain/catalog";
-import type { Brief } from "../types";
+import type { BodyMetric, Brief, SetLog, Workout } from "../types";
 import "../styles.css";
 
 const TODAY = "2026-10-26";
@@ -39,30 +41,98 @@ const plans = buildPlans({
   lastDayType: "upper",
 });
 
+/** Демо-история за 8 недель: рост весов, пропуск недели, вес тела вверх. */
+const PROGRAM = [
+  { id: "bb-back-squat", base: 70, step: 5, reps: [8, 8, 6] },
+  { id: "bb-bench-press", base: 55, step: 2.5, reps: [10, 8, 6] },
+  { id: "bb-row", base: 45, step: 2.5, reps: [10, 10, 8] },
+  { id: "bb-romanian-deadlift", base: 60, step: 5, reps: [10, 8, 8] },
+  { id: "bodyweight-pull-up", base: 78.5, step: 0.6, reps: [8, 7, 6] },
+];
+
+const demoWorkouts: Workout[] = [];
+const demoSets: SetLog[] = [];
+const demoBody: BodyMetric[] = [];
+
+for (let week = 7; week >= 0; week -= 1) {
+  if (week === 5) continue; // неделя пропущена — на графике будет честный ноль
+  const date = addDays(TODAY, -7 * week);
+  const workoutId = `demo-w-${week}`;
+  const createdAt = `${date}T18:00:00.000Z`;
+  demoWorkouts.push({
+    id: workoutId,
+    date,
+    readiness: 62 + (week % 3) * 8,
+    durationMin: 52 + (week % 4) * 4,
+    createdAt,
+    updatedAt: createdAt,
+    pendingSync: true,
+  });
+
+  for (const exercise of PROGRAM) {
+    const weight = exercise.base + (7 - week) * exercise.step;
+    exercise.reps.forEach((reps, index) => {
+      demoSets.push({
+        id: `${workoutId}-${exercise.id}-${index}`,
+        workoutId,
+        exerciseId: exercise.id,
+        setIndex: index + 1,
+        weight: Math.round(weight * 10) / 10,
+        reps,
+        rpe: index === 2 ? 9 : 8,
+        isWarmup: false,
+        createdAt,
+        pendingSync: true,
+      });
+    });
+  }
+
+  demoBody.push({
+    id: `demo-b-${week}`,
+    date,
+    weightKg: Math.round((78.3 + (7 - week) * 0.18) * 10) / 10,
+    createdAt,
+    pendingSync: true,
+  });
+}
+
+const view = new URLSearchParams(window.location.search).get("view");
+
 createRoot(document.getElementById("root")!).render(
-  <div style={{ width: 390, margin: "0 auto", display: "grid", gap: 16 }}>
-    <div className="screen">
-      <PlanPicker plans={plans} readiness={readiness} onPick={() => {}} onBack={() => {}} />
+  view === "progress" ? (
+    <div style={{ width: 390, margin: "0 auto", padding: 16 }}>
+      <ProgressView
+        workouts={demoWorkouts}
+        sets={demoSets}
+        body={demoBody}
+        todayIso={TODAY}
+      />
     </div>
-    {plans[0] && (
+  ) : (
+    <div style={{ width: 390, margin: "0 auto", display: "grid", gap: 16 }}>
       <div className="screen">
-        <WorkoutRunner
-          plan={plans[0]}
-          exercises={EXERCISES}
-          workoutId="preview"
-          startedAt={Date.now()}
-          onFinish={() => {}}
-          onCancel={() => {}}
-        />
+        <PlanPicker plans={plans} readiness={readiness} onPick={() => {}} onBack={() => {}} />
       </div>
-    )}
-    <div style={{ display: "grid", gap: 12, padding: 12 }}>
-      <MuscleMap primary="chest" secondary={["triceps", "shoulders"]} />
-      <MuscleMap primary="lats" secondary={["back", "biceps"]} />
-      <MuscleMap primary="quads" secondary={["glutes", "hamstrings"]} />
-      <MuscleMap primary="shoulders" secondary={["traps", "triceps"]} />
+      {plans[0] && (
+        <div className="screen">
+          <WorkoutRunner
+            plan={plans[0]}
+            exercises={EXERCISES}
+            workoutId="preview"
+            startedAt={Date.now()}
+            onFinish={() => {}}
+            onCancel={() => {}}
+          />
+        </div>
+      )}
+      <div style={{ display: "grid", gap: 12, padding: 12 }}>
+        <MuscleMap primary="chest" secondary={["triceps", "shoulders"]} />
+        <MuscleMap primary="lats" secondary={["back", "biceps"]} />
+        <MuscleMap primary="quads" secondary={["glutes", "hamstrings"]} />
+        <MuscleMap primary="shoulders" secondary={["traps", "triceps"]} />
+      </div>
     </div>
-  </div>,
+  ),
 );
 
 /* Демо-сценарии для проверки правки подхода без ручных кликов:

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AccessGate from "./components/AccessGate";
 import TodayScreen from "./screens/TodayScreen";
 import CatalogScreen from "./screens/CatalogScreen";
 import ProgressScreen from "./screens/ProgressScreen";
@@ -17,35 +18,37 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("today");
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <span className="brand">Gym Coach</span>
-        <span className="phase">P1</span>
-      </header>
+    <AccessGate>
+      <div className="app">
+        <header className="topbar">
+          <span className="brand">Gym Coach</span>
+          <span className="phase">P2</span>
+        </header>
 
-      <main className="content">
-        {tab === "today" && <TodayScreen />}
-        {tab === "catalog" && <CatalogScreen />}
-        {tab === "progress" && <ProgressScreen />}
-        {tab === "settings" && <SettingsScreen />}
-      </main>
+        <main className="content">
+          {tab === "today" && <TodayScreen />}
+          {tab === "catalog" && <CatalogScreen />}
+          {tab === "progress" && <ProgressScreen />}
+          {tab === "settings" && <SettingsScreen />}
+        </main>
 
-      <nav className="tabbar">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={t.id === tab ? "tab tab--active" : "tab"}
-            onClick={() => setTab(t.id)}
-            aria-current={t.id === tab}
-          >
-            <span className="tab__icon" aria-hidden="true">
-              {t.icon}
-            </span>
-            <span className="tab__label">{t.label}</span>
-          </button>
-        ))}
-      </nav>
-    </div>
+        <nav className="tabbar">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={t.id === tab ? "tab tab--active" : "tab"}
+              onClick={() => setTab(t.id)}
+              aria-current={t.id === tab}
+            >
+              <span className="tab__icon" aria-hidden="true">
+                {t.icon}
+              </span>
+              <span className="tab__label">{t.label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+    </AccessGate>
   );
 }

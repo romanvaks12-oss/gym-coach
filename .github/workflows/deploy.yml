@@ -25,6 +25,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          # Необязательный код тестового доступа. Пусто → вход не спрашивается.
+          VITE_INVITE_CODE: ${{ vars.INVITE_CODE }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

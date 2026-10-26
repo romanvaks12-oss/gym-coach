@@ -1,6 +1,8 @@
-/* Offline shell: stale-while-revalidate for same-origin GETs.
-   Data lives in IndexedDB, so a stale cache never loses a workout. */
-const CACHE = "gym-coach-v1";
+/* Offline shell.
+   Навигация — network-first: свежий index.html, чтобы обновления были видны сразу.
+   Офлайн — отдаём кэш. Остальные GET — stale-while-revalidate.
+   Данные живут в IndexedDB, кэш их не теряет. */
+const CACHE = "gym-coach-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["./", "./manifest.webmanifest"])));
@@ -21,6 +23,21 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+
+  if (req.mode === "navigate") {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put("./", copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match("./")),
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(req).then((cached) => {
