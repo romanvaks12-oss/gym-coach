@@ -56,23 +56,28 @@ export function nextTarget(params: {
   const measure: Measure = params.measure ?? "reps";
   const missed = params.missedSessions ?? 0;
   const word = unit(measure);
+  const step = STEP[equipment] ?? 1;
 
-  if (lastSets.length === 0) {
-    return {
-      weight: params.usesBodyweight ? null : null,
-      repLow,
-      repHigh,
-      repTarget: repHigh,
-      repHighTarget: repHigh,
-      reason: params.usesBodyweight
-        ? `Свой вес: делаем ${repHigh} ${word} с запасом 2–3 повтора (RPE 7)`
-        : `Первый раз: подбери вес, с которым сделаешь ${repHigh} ${word} на RPE 7`,
-    };
-  }
+  const firstTime = (): Target => ({
+    weight: null,
+    repLow,
+    repHigh,
+    repTarget: repHigh,
+    repHighTarget: repHigh,
+    reason: params.usesBodyweight
+      ? `Свой вес: делаем ${repHigh} ${word} с запасом 2–3 повтора (RPE 7)`
+      : `Первый раз: подбери вес, с которым сделаешь ${repHigh} ${word} на RPE 7`,
+  });
 
-  const best = lastSets.reduce((a, b) => (b.weight * b.reps > a.weight * a.reps ? b : a));
+  // История могла испортиться (импорт, ручная правка): работаем только с корректными подходами
+  const usable = lastSets.filter(
+    (s) => Number.isFinite(s.weight) && s.weight >= 0 && Number.isFinite(s.reps) && s.reps > 0,
+  );
+  if (usable.length === 0) return firstTime();
+
+  const best = usable.reduce((a, b) => (b.weight * b.reps > a.weight * a.reps ? b : a));
   const reps = best.reps;
-  const maxRpe = Math.max(...lastSets.map((s) => s.rpe));
+  const maxRpe = Math.max(...usable.map((s) => (Number.isFinite(s.rpe) ? s.rpe : 8)));
 
   if (params.usesBodyweight) {
     const nextReps = Math.min(repHigh + 2, reps + 1);
@@ -105,7 +110,6 @@ export function nextTarget(params: {
   }
 
   if (missed >= 2) {
-    const step = STEP[equipment];
     const next = roundToStep(Math.max(best.weight * 0.95, 0), step);
     return {
       weight: next,
@@ -129,7 +133,6 @@ export function nextTarget(params: {
   }
 
   if (reps >= repHigh && maxRpe <= 8) {
-    const step = STEP[equipment];
     const next = roundToStep(best.weight * 1.025, step);
     return {
       weight: next,
@@ -166,3 +169,4 @@ export function warmupSets(params: {
     { percent: 80, weight: roundToStep(workWeight * 0.8, 2.5), reps: 3 },
   ];
 }
+

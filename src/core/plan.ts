@@ -1,6 +1,7 @@
 import type { Brief, Exercise, MuscleGroup, Pattern } from "../types";
 import { MUSCLE_LABELS } from "../domain/catalog";
 import { nextTarget, type PerformedSet } from "./progression";
+import { saneBodyWeightKg } from "./validation";
 import type { ReadinessResult } from "./readiness";
 
 export type DayType = "full" | "upper" | "lower";
@@ -271,9 +272,10 @@ export function buildPlans(params: {
     .sort((a, b) => b.total - a.total);
 
   const historyEmpty = history.length === 0;
-  const ordered = historyEmpty
-    ? [{ ...ranked[0], dayType: "full" as DayType }, ...ranked.filter((r) => r.dayType !== "full")]
-    : ranked;
+  const ordered =
+    historyEmpty && ranked.length > 0
+      ? [{ ...ranked[0], dayType: "full" as DayType }, ...ranked.filter((r) => r.dayType !== "full")]
+      : ranked;
 
   if (ordered.length === 0) return [];
 
@@ -361,7 +363,7 @@ export function buildPlans(params: {
       items,
       estimatedMin,
       volumeMultiplier: readiness.volumeMultiplier,
-      bodyWeightKg: brief.bodyWeightKg ?? null,
+      bodyWeightKg: saneBodyWeightKg(brief.bodyWeightKg),
     };
   });
 }

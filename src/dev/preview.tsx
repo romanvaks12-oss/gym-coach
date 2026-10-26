@@ -64,3 +64,47 @@ createRoot(document.getElementById("root")!).render(
     </div>
   </div>,
 );
+
+/* Демо-сценарии для проверки правки подхода без ручных кликов:
+   /preview.html?demo=warn — записать 12, потом ввести 112 и увидеть предупреждение
+   /preview.html?demo=edit — записать подход и открыть его на правку */
+const demo = new URLSearchParams(window.location.search).get("demo");
+
+async function runDemo(kind: string) {
+  const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+  const setValue = (el: HTMLInputElement, value: string) => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    setter?.call(el, value);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  const click = (text: string) => {
+    const btn = [...document.querySelectorAll("button")].find(
+      (b) => b.textContent?.trim() === text,
+    );
+    btn?.click();
+    return Boolean(btn);
+  };
+
+  await wait(400);
+  const inputs = [...document.querySelectorAll<HTMLInputElement>(".screen .input")];
+  const weightInput = inputs.find((i) => i.inputMode === "decimal");
+  const repsInput = inputs.find((i) => i.inputMode === "numeric");
+  if (!weightInput || !repsInput) return;
+
+  setValue(weightInput, "12");
+  setValue(repsInput, "8");
+  await wait(120);
+  click("Записать подход");
+  await wait(250);
+
+  if (kind === "warn") {
+    setValue(weightInput, "112");
+    await wait(120);
+    click("Записать подход");
+  }
+  if (kind === "edit") {
+    click("правка");
+  }
+}
+
+if (demo) void runDemo(demo);
