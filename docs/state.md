@@ -51,6 +51,11 @@ P1 и P2 готовы, репозиторий на GitHub, деплой на Pag
 https://romanvaks12-oss.github.io/gym-coach/ — GitHub Pages, ветка `main`, workflow `deploy.yml`.
 Репозиторий: https://github.com/romanvaks12-oss/gym-coach (public).
 
+Офлайн-обновления: service worker (`public/sw.js`, кэш `gym-coach-v2`) отдаёт навигацию
+network-first, остальное — stale-while-revalidate. Поэтому новые версии видны сразу, а офлайн
+работает из кэша. Один раз после перехода на v2 старый кэш мог показать пустой экран —
+лечится перезапуском приложения.
+
 ## Следующий шаг
 
 1. Открыть сайт на iPhone в Safari → «Поделиться» → «На экран Домой», пройти бриф, тренировку,
