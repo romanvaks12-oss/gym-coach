@@ -105,7 +105,7 @@ export default function WorkoutRunner({
     }
     resetToLastSet();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item]);
+  }, [item, ownLogs.length]);
 
   useEffect(() => {
     onProgress?.(index, logs);
@@ -206,23 +206,37 @@ export default function WorkoutRunner({
       setLogs((prev) =>
         prev.map((l) => (l.id === editingId ? { ...l, weight: total, reps: numericReps, rpe } : l)),
       );
-    } else {
-      const log: SetLog = {
-        id: crypto.randomUUID(),
-        workoutId,
-        exerciseId: item.exerciseId,
-        setIndex: nextSetNumber,
-        weight: total,
-        reps: numericReps,
-        rpe,
-        isWarmup: false,
-        createdAt: nowIso(),
-        pendingSync: true,
-      };
-      setLogs((prev) => [...prev, log]);
-      setRestLeft(item.restSec);
+      resetToPlan();
+      return;
     }
-    resetToPlan();
+
+    const log: SetLog = {
+      id: crypto.randomUUID(),
+      workoutId,
+      exerciseId: item.exerciseId,
+      setIndex: nextSetNumber,
+      weight: total,
+      reps: numericReps,
+      rpe,
+      isWarmup: false,
+      createdAt: nowIso(),
+      pendingSync: true,
+    };
+    setLogs((prev) => [...prev, log]);
+    setRestLeft(item.restSec);
+
+    if (isBodyweight) {
+      const extra = bodyWeight ? Math.max(0, total - bodyWeight) : total;
+      setExtraWeight(extra > 0 ? formatKg(extra) : "");
+      setWeight("");
+    } else {
+      setWeight(formatKg(total));
+    }
+    setReps(String(numericReps));
+    setRpe(rpe);
+    setError(null);
+    setWarning(null);
+    setConfirmPending(false);
   }
 
   function next() {
