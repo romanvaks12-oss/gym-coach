@@ -99,6 +99,17 @@ export interface BodyMetric {
   pendingSync?: boolean;
 }
 
+export interface ActiveSession {
+  workoutId: string;
+  planId: string;
+  plan: import("./core/plan").PlanOption;
+  startedAt: number;
+  date: string;
+  readiness: number;
+  index: number;
+  logs: SetLog[];
+}
+
 export interface AppSettings {
   syncUrl: string;
   syncToken: string;

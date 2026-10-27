@@ -18,6 +18,9 @@ export default function WorkoutRunner({
   exercises,
   workoutId,
   startedAt,
+  initialIndex = 0,
+  initialLogs = [],
+  onProgress,
   onFinish,
   onCancel,
 }: {
@@ -25,11 +28,14 @@ export default function WorkoutRunner({
   exercises: Exercise[];
   workoutId: string;
   startedAt: number;
+  initialIndex?: number;
+  initialLogs?: SetLog[];
+  onProgress?: (index: number, logs: SetLog[]) => void;
   onFinish: (logs: SetLog[], durationMin: number) => void;
   onCancel: () => void;
 }) {
-  const [index, setIndex] = useState(0);
-  const [logs, setLogs] = useState<SetLog[]>([]);
+  const [index, setIndex] = useState(initialIndex);
+  const [logs, setLogs] = useState<SetLog[]>(initialLogs);
   const [weight, setWeight] = useState("");
   const [extraWeight, setExtraWeight] = useState("");
   const [reps, setReps] = useState("");
@@ -70,10 +76,41 @@ export default function WorkoutRunner({
     setConfirmPending(false);
   }
 
+  function resetToLastSet() {
+    if (!item || ownLogs.length === 0) {
+      resetToPlan();
+      return;
+    }
+    const last = ownLogs[ownLogs.length - 1];
+    setEditingId(null);
+    if (isBodyweight) {
+      const extra = bodyWeight ? Math.max(0, last.weight - bodyWeight) : last.weight;
+      setExtraWeight(extra > 0 ? formatKg(extra) : "");
+      setWeight("");
+    } else {
+      setWeight(formatKg(last.weight));
+    }
+    setReps(String(last.reps));
+    setRpe(last.rpe);
+    setError(null);
+    setWarning(null);
+    setConfirmPending(false);
+  }
+
   useEffect(() => {
-    resetToPlan();
+    if (editingId) return;
+    if (ownLogs.length === 0) {
+      resetToPlan();
+      return;
+    }
+    resetToLastSet();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item]);
+
+  useEffect(() => {
+    onProgress?.(index, logs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, logs]);
 
   useEffect(() => {
     if (restLeft === null) return;
@@ -370,6 +407,12 @@ export default function WorkoutRunner({
               ? "Всё верно, записать"
               : "Записать подход"}
         </button>
+
+        {!editingId && ownLogs.length > 0 && (
+          <button type="button" className="button button--ghost" onClick={resetToPlan}>
+            Сбросить к плану
+          </button>
+        )}
 
         {editingId && (
           <div className="row">

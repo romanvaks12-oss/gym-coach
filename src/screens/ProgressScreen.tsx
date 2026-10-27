@@ -136,11 +136,20 @@ export function ProgressView({
   const last = weeks[weeks.length - 1];
   const prev = weeks[weeks.length - 2];
   const workouts4 = weeks.slice(-4).reduce((sum, week) => sum + week.workouts, 0);
+  const workouts4Prev = weeks.slice(-8, -4).reduce((sum, week) => sum + week.workouts, 0);
   const tonnageDelta =
     prev && prev.tonnage > 0
       ? Math.round(((last.tonnage - prev.tonnage) / prev.tonnage) * 100)
       : null;
+  const setsDelta =
+    prev && prev.sets > 0 ? Math.round(((last.sets - prev.sets) / prev.sets) * 100) : null;
+  const workouts4Delta =
+    workouts4Prev > 0 ? Math.round(((workouts4 - workouts4Prev) / workouts4Prev) * 100) : null;
   const bodyLast = bodyPoints.length > 0 ? bodyPoints[bodyPoints.length - 1].weightKg : null;
+  const bodyDeltaPct =
+    bodyDiff && bodyDiff.from > 0
+      ? Math.round((bodyDiff.deltaKg / bodyDiff.from) * 100 * 10) / 10
+      : null;
 
   if (workouts.length === 0) {
     return (
@@ -186,12 +195,26 @@ export function ProgressView({
           <span className="stat__label">
             {plural(workouts4, "тренировка", "тренировки", "тренировок")} за 4 недели
           </span>
+          {workouts4Delta !== null && (
+            <span
+              className={workouts4Delta >= 0 ? "stat__delta stat__delta--up" : "stat__delta stat__delta--down"}
+            >
+              {workouts4Delta >= 0 ? "+" : "−"}
+              {Math.abs(workouts4Delta)} % к пред. 4 нед.
+            </span>
+          )}
         </div>
         <div className="stat">
           <span className="stat__value">{last.sets}</span>
           <span className="stat__label">
             {plural(last.sets, "подход", "подхода", "подходов")} за неделю
           </span>
+          {setsDelta !== null && (
+            <span className={setsDelta >= 0 ? "stat__delta stat__delta--up" : "stat__delta stat__delta--down"}>
+              {setsDelta >= 0 ? "+" : "−"}
+              {Math.abs(setsDelta)} % к прошлой
+            </span>
+          )}
         </div>
         <div className="stat">
           <span className="stat__value">{bodyLast === null ? "—" : formatKg(bodyLast)}</span>
@@ -203,6 +226,7 @@ export function ProgressView({
               }
             >
               {signed(bodyDiff.deltaKg)} кг
+              {bodyDeltaPct !== null ? ` (${bodyDeltaPct >= 0 ? "+" : ""}${bodyDeltaPct}%)` : ""}
             </span>
           )}
         </div>

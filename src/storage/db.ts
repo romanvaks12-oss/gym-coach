@@ -66,6 +66,9 @@ export const db = {
   putKey<T>(store: StoreName, key: string, value: T): Promise<IDBValidKey> {
     return tx<IDBValidKey>(store, "readwrite", (s) => s.put(value as never, key));
   },
+  deleteKey(store: StoreName, key: string): Promise<undefined> {
+    return tx<undefined>(store, "readwrite", (s) => s.delete(key) as IDBRequest<undefined>);
+  },
   /** Запись пачки в одной транзакции — быстрее, чем N отдельных put */
   putMany<T>(store: StoreName, values: T[]): Promise<void> {
     if (values.length === 0) return Promise.resolve();
@@ -130,4 +133,19 @@ export async function countAll(): Promise<{ workouts: number; sets: number; body
     db.getAll<BodyMetric>("body"),
   ]);
   return { workouts: workouts.length, sets: sets.length, body: body.length };
+}
+
+const ACTIVE_SESSION_KEY = "activeSession";
+
+export async function loadActiveSession(): Promise<import("../types").ActiveSession | null> {
+  const session = await db.get<import("../types").ActiveSession>("meta", ACTIVE_SESSION_KEY);
+  return session ?? null;
+}
+
+export async function saveActiveSession(session: import("../types").ActiveSession): Promise<void> {
+  await db.putKey("meta", ACTIVE_SESSION_KEY, session);
+}
+
+export async function clearActiveSession(): Promise<void> {
+  await db.deleteKey("meta", ACTIVE_SESSION_KEY);
 }

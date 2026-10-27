@@ -1,10 +1,10 @@
-import { useState } from "react";
-import type { Brief, SetLog, Workout } from "../types";
+import { useEffect, useState } from "react";
+import type { ActiveSession, Brief, SetLog, Workout } from "../types";
 import { EXERCISES } from "../domain/catalog";
 import { buildPlans, type PlanOption } from "../core/plan";
 import { computeReadiness, type ReadinessResult } from "../core/readiness";
 import { nowIso, todayIso } from "../core/dates";
-import { db, loadSettings } from "../storage/db";
+import { clearActiveSession, db, loadActiveSession, loadSettings, saveActiveSession } from "../storage/db";
 import { isConfigured, syncNow } from "../storage/sync";
 import { loadHistory, loadLastDay, saveLastDay } from "../storage/history";
 import BriefForm from "./BriefForm";
@@ -21,7 +21,7 @@ type SyncNote =
 type Step =
   | { kind: "brief" }
   | { kind: "plans"; plans: PlanOption[]; readiness: ReadinessResult; brief: Brief }
-  | { kind: "workout"; plan: PlanOption; workoutId: string; startedAt: number; readiness: number }
+  | { kind: "workout"; plan: PlanOption; workoutId: string; startedAt: number; readiness: number; index: number; logs: SetLog[] }
   | {
       kind: "done";
       tonnage: number;
@@ -34,6 +34,11 @@ export default function TodayScreen() {
   const [step, setStep] = useState<Step>({ kind: "brief" });
   const [busy, setBusy] = useState(false);
   const [sync, setSync] = useState<SyncNote>({ kind: "idle" });
+  const [active, setActive] = useState<ActiveSession | null>(null);
+
+  useEffect(() => {
+    loadActiveSession().then(setActive).catch(() => setActive(null));
+  }, []);
 
   /** Тихий синк после тренировки: никогда не блокирует сводку и не мешает сохранить данные. */
   async function trySync() {
@@ -70,13 +75,46 @@ export default function TodayScreen() {
   }
 
   function onPick(plan: PlanOption, readiness: number) {
+    const session: ActiveSession = {
+      workoutId: crypto.randomUUID(),
+      planId: plan.id,
+      plan,
+      startedAt: Date.now(),
+      date: todayIso(),
+      readiness,
+      index: 0,
+      logs: [],
+    };
+    void saveActiveSession(session);
+    setActive(session);
     setStep({
       kind: "workout",
       plan,
-      workoutId: crypto.randomUUID(),
-      startedAt: Date.now(),
+      workoutId: session.workoutId,
+      startedAt: session.startedAt,
       readiness,
+      index: 0,
+      logs: [],
     });
+  }
+
+  function resumeActive() {
+    if (!active) return;
+    setStep({
+      kind: "workout",
+      plan: active.plan,
+      workoutId: active.workoutId,
+      startedAt: active.startedAt,
+      readiness: active.readiness,
+      index: active.index,
+      logs: active.logs,
+    });
+  }
+
+  async function cancelActive() {
+    await clearActiveSession();
+    setActive(null);
+    setStep({ kind: "brief" });
   }
 
   async function onFinish(
@@ -112,6 +150,8 @@ export default function TodayScreen() {
       });
     }
     await saveLastDay(plan.dayType, workout.date);
+    await clearActiveSession();
+    setActive(null);
 
     const tonnage = logs.reduce((sum, l) => sum + l.weight * l.reps, 0);
     setStep({
@@ -133,7 +173,28 @@ export default function TodayScreen() {
   }
 
   if (step.kind === "brief") {
-    return <BriefForm onDone={onBrief} />;
+    return (
+      <>
+        {active && (
+          <div className="screen">
+            <h1 className="screen__title">Сегодня</h1>
+            <section className="card card--rest">
+              <h2 className="card__title">Тренировка в процессе</h2>
+              <p className="card__text">
+                Начата в {new Date(active.startedAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+              </p>
+              <button type="button" className="button" onClick={resumeActive}>
+                Продолжить тренировку
+              </button>
+              <button type="button" className="button button--ghost" onClick={() => void cancelActive()}>
+                Отменить тренировку
+              </button>
+            </section>
+          </div>
+        )}
+        {!active && <BriefForm onDone={onBrief} />}
+      </>
+    );
   }
 
   if (step.kind === "plans") {
@@ -154,10 +215,22 @@ export default function TodayScreen() {
         exercises={EXERCISES}
         workoutId={step.workoutId}
         startedAt={step.startedAt}
+        initialIndex={step.index}
+        initialLogs={step.logs}
+        onProgress={(index, logs) => {
+          if (!active) return;
+          const updated: ActiveSession = { ...active, index, logs };
+          setActive(updated);
+          void saveActiveSession(updated);
+        }}
         onFinish={(logs, minutes) =>
           onFinish(logs, minutes, step.plan, step.workoutId, step.readiness)
         }
-        onCancel={() => setStep({ kind: "brief" })}
+        onCancel={() => {
+          void clearActiveSession();
+          setActive(null);
+          setStep({ kind: "brief" });
+        }}
       />
     );
   }
