@@ -2,7 +2,7 @@
    Навигация — network-first: свежий index.html, чтобы обновления были видны сразу.
    Офлайн — отдаём кэш. Остальные GET — stale-while-revalidate.
    Данные живут в IndexedDB, кэш их не теряет. */
-const CACHE = "gym-coach-v2";
+const CACHE = "gym-coach-v3";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["./", "./manifest.webmanifest"])));
