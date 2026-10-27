@@ -571,9 +571,15 @@ body {
 }
 
 .musclemap__body path {
+  stroke: none;
+}
+
+.musclemap__outline path {
+  fill: none;
   stroke: rgba(255, 255, 255, 0.2);
   stroke-width: 1.1;
   stroke-linejoin: round;
+  stroke-linecap: round;
 }
 
 .muscle {
