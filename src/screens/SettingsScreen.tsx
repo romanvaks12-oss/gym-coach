@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AppSettings } from "../types";
-import { exportAll, loadSettings, saveSettings } from "../storage/db";
-import { isConfigured, normalizeUrl, pendingCount, syncNow, testConnection } from "../storage/sync";
+import { countAll, exportAll, loadSettings, saveSettings } from "../storage/db";
+import {
+  isConfigured,
+  normalizeUrl,
+  pendingCount,
+  pullReplace,
+  syncNow,
+  testConnection,
+} from "../storage/sync";
 
 type Tone = "idle" | "busy" | "ok" | "error";
 
@@ -30,6 +37,7 @@ export default function SettingsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(0);
   const [status, setStatus] = useState<Status>({ tone: "idle", text: "" });
+  const [confirmPull, setConfirmPull] = useState(false);
 
   const refreshPending = useCallback(() => {
     pendingCount()
@@ -43,6 +51,31 @@ export default function SettingsScreen() {
       .catch(() => setError("Локальная база недоступна"));
     refreshPending();
   }, [refreshPending]);
+
+  // Новый телефон: настройки уже есть, а база пустая — сами тянем историю из таблицы
+  useEffect(() => {
+    if (!settings || !isConfigured(settings)) return;
+    let cancelled = false;
+    void (async () => {
+      const counts = await countAll();
+      if (cancelled || counts.workouts > 0 || counts.sets > 0) return;
+      setStatus({ tone: "busy", text: "База пустая — загружаю историю из таблицы…" });
+      const pulled = await pullReplace(settings);
+      if (cancelled) return;
+      if (pulled.ok) {
+        setStatus({
+          tone: "ok",
+          text: `История из таблицы: тренировок ${pulled.workouts}, подходов ${pulled.sets}, замеров ${pulled.body}`,
+        });
+        refreshPending();
+      } else {
+        setStatus({ tone: "error", text: pulled.error ?? "Не удалось загрузить историю" });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [settings, refreshPending]);
 
   const configured = settings ? isConfigured(settings) : false;
 
@@ -70,11 +103,28 @@ export default function SettingsScreen() {
     setStatus({ tone: "busy", text: "Проверяю связь…" });
     const clean = await persist(settings);
     const result = await testConnection(clean);
-    setStatus(
-      result.ok
-        ? { tone: "ok", text: "Связь есть — таблица отвечает" }
-        : { tone: "error", text: result.error ?? "Не получилось" },
-    );
+    if (!result.ok) {
+      setStatus({ tone: "error", text: result.error ?? "Не получилось" });
+      return;
+    }
+
+    // Новый телефон: локально пусто — сразу забираем историю из таблицы
+    const counts = await countAll();
+    if (counts.workouts === 0 && counts.sets === 0) {
+      const pulled = await pullReplace(clean);
+      if (pulled.ok) {
+        const next = await loadSettings();
+        setSettings(next);
+        setStatus({
+          tone: "ok",
+          text: `Связь есть. История из таблицы загружена: тренировок ${pulled.workouts}, подходов ${pulled.sets}`,
+        });
+        refreshPending();
+        return;
+      }
+    }
+
+    setStatus({ tone: "ok", text: "Связь есть — таблица отвечает" });
   }
 
   async function onSync() {
@@ -92,6 +142,33 @@ export default function SettingsScreen() {
       refreshPending();
     } else {
       setStatus({ tone: "error", text: result.error ?? "Синк не удался" });
+    }
+  }
+
+  async function onPull() {
+    if (!settings) return;
+    if (!confirmPull) {
+      setConfirmPull(true);
+      setStatus({
+        tone: "idle",
+        text: "Нажми «Загрузить из таблицы» ещё раз — локальные записи заменятся тем, что в таблице.",
+      });
+      return;
+    }
+    setConfirmPull(false);
+    setStatus({ tone: "busy", text: "Читаю таблицу…" });
+    const clean = await persist(settings);
+    const result = await pullReplace(clean);
+    if (result.ok) {
+      const next = await loadSettings();
+      setSettings(next);
+      setStatus({
+        tone: "ok",
+        text: `Загружено из таблицы: тренировок ${result.workouts}, подходов ${result.sets}, замеров ${result.body}`,
+      });
+      refreshPending();
+    } else {
+      setStatus({ tone: "error", text: result.error ?? "Не удалось загрузить" });
     }
   }
 
@@ -177,6 +254,17 @@ export default function SettingsScreen() {
             disabled={!settings || status.tone === "busy"}
           >
             Слить сейчас
+          </button>
+        </div>
+
+        <div className="row">
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={onPull}
+            disabled={!settings || status.tone === "busy"}
+          >
+            {confirmPull ? "Точно заменить?" : "Загрузить из таблицы"}
           </button>
         </div>
 

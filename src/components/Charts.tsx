@@ -92,9 +92,9 @@ export function LineChart({
         </linearGradient>
       </defs>
 
-      {[max, (max + min) / 2, min].map((value) => (
+      {[max, (max + min) / 2, min].map((value, index) => (
         <line
-          key={value}
+          key={`grid-${index}`}
           x1={padLeft}
           x2={W - padRight}
           y1={y(value)}

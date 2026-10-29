@@ -3,13 +3,15 @@ import AccessGate from "./components/AccessGate";
 import TodayScreen from "./screens/TodayScreen";
 import CatalogScreen from "./screens/CatalogScreen";
 import ProgressScreen from "./screens/ProgressScreen";
+import HistoryScreen from "./screens/HistoryScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 
-type Tab = "today" | "catalog" | "progress" | "settings";
+type Tab = "today" | "catalog" | "history" | "progress" | "settings";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "today", label: "Сегодня", icon: "◎" },
   { id: "catalog", label: "Каталог", icon: "☰" },
+  { id: "history", label: "История", icon: "≡" },
   { id: "progress", label: "Прогресс", icon: "◔" },
   { id: "settings", label: "Настройки", icon: "⚙" },
 ];
@@ -28,6 +30,7 @@ export default function App() {
         <main className="content">
           {tab === "today" && <TodayScreen />}
           {tab === "catalog" && <CatalogScreen />}
+          {tab === "history" && <HistoryScreen />}
           {tab === "progress" && <ProgressScreen />}
           {tab === "settings" && <SettingsScreen />}
         </main>

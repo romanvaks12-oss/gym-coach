@@ -89,6 +89,10 @@ export const db = {
   remove(store: StoreName, key: string): Promise<undefined> {
     return tx<undefined>(store, "readwrite", (s) => s.delete(key) as IDBRequest<undefined>);
   },
+  /** Полная очистка хранилища — нужна перед заменой локальных данных серверными. */
+  clear(store: StoreName): Promise<undefined> {
+    return tx<undefined>(store, "readwrite", (s) => s.clear() as IDBRequest<undefined>);
+  },
 };
 
 const SETTINGS_KEY = "settings";

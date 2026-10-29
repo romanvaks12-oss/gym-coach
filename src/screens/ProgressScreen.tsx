@@ -135,14 +135,21 @@ export function ProgressView({
 
   const last = weeks[weeks.length - 1];
   const prev = weeks[weeks.length - 2];
+
+  /** Ближайшая неделя с данными до текущей — чтобы дельта была даже после пропуска. */
+  const prevWithData =
+    [...weeks].reverse().find((week) => week !== last && week.tonnage > 0) ?? null;
+
   const workouts4 = weeks.slice(-4).reduce((sum, week) => sum + week.workouts, 0);
   const workouts4Prev = weeks.slice(-8, -4).reduce((sum, week) => sum + week.workouts, 0);
+  const tonnageBase = prev && prev.tonnage > 0 ? prev : prevWithData;
+  const setsBase = prev && prev.sets > 0 ? prev : prevWithData;
   const tonnageDelta =
-    prev && prev.tonnage > 0
-      ? Math.round(((last.tonnage - prev.tonnage) / prev.tonnage) * 100)
+    tonnageBase && tonnageBase.tonnage > 0
+      ? Math.round(((last.tonnage - tonnageBase.tonnage) / tonnageBase.tonnage) * 100)
       : null;
   const setsDelta =
-    prev && prev.sets > 0 ? Math.round(((last.sets - prev.sets) / prev.sets) * 100) : null;
+    setsBase && setsBase.sets > 0 ? Math.round(((last.sets - setsBase.sets) / setsBase.sets) * 100) : null;
   const workouts4Delta =
     workouts4Prev > 0 ? Math.round(((workouts4 - workouts4Prev) / workouts4Prev) * 100) : null;
   const bodyLast = bodyPoints.length > 0 ? bodyPoints[bodyPoints.length - 1].weightKg : null;
@@ -150,6 +157,13 @@ export function ProgressView({
     bodyDiff && bodyDiff.from > 0
       ? Math.round((bodyDiff.deltaKg / bodyDiff.from) * 100 * 10) / 10
       : null;
+
+  const lastWorkout = useMemo(() => {
+    const done = [...workouts].sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+    if (!done) return null;
+    const count = sets.filter((set) => set.workoutId === done.id && !set.isWarmup).length;
+    return { date: done.date, sets: count };
+  }, [workouts, sets]);
 
   if (workouts.length === 0) {
     return (
@@ -179,6 +193,13 @@ export function ProgressView({
     <div className="screen">
       <h1 className="screen__title">Прогресс</h1>
 
+      {lastWorkout && (
+        <p className="hint">
+          Последняя тренировка: {dayMonth(lastWorkout.date)} · {lastWorkout.sets}{" "}
+          {plural(lastWorkout.sets, "подход", "подхода", "подходов")}
+        </p>
+      )}
+
       <div className="stats">
         <div className="stat">
           <span className="stat__value">{formatNumber(last.tonnage)}</span>
@@ -186,9 +207,10 @@ export function ProgressView({
           {tonnageDelta !== null && (
             <span className={tonnageDelta >= 0 ? "stat__delta stat__delta--up" : "stat__delta stat__delta--down"}>
               {tonnageDelta >= 0 ? "+" : "−"}
-              {Math.abs(tonnageDelta)} % к прошлой
+              {Math.abs(tonnageDelta)} % {tonnageBase === prev ? "к прошлой" : `к неделе ${tonnageBase?.label}`}
             </span>
           )}
+          {tonnageDelta === null && <span className="stat__delta">первая неделя с данными</span>}
         </div>
         <div className="stat">
           <span className="stat__value">{workouts4}</span>
@@ -203,6 +225,7 @@ export function ProgressView({
               {Math.abs(workouts4Delta)} % к пред. 4 нед.
             </span>
           )}
+          {workouts4Delta === null && <span className="stat__delta">первый период</span>}
         </div>
         <div className="stat">
           <span className="stat__value">{last.sets}</span>
@@ -212,9 +235,10 @@ export function ProgressView({
           {setsDelta !== null && (
             <span className={setsDelta >= 0 ? "stat__delta stat__delta--up" : "stat__delta stat__delta--down"}>
               {setsDelta >= 0 ? "+" : "−"}
-              {Math.abs(setsDelta)} % к прошлой
+              {Math.abs(setsDelta)} % {setsBase === prev ? "к прошлой" : `к неделе ${setsBase?.label}`}
             </span>
           )}
+          {setsDelta === null && <span className="stat__delta">первая неделя с данными</span>}
         </div>
         <div className="stat">
           <span className="stat__value">{bodyLast === null ? "—" : formatKg(bodyLast)}</span>

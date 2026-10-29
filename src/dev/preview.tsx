@@ -12,6 +12,7 @@ import PlanPicker from "../screens/PlanPicker";
 import WorkoutRunner from "../screens/WorkoutRunner";
 import SettingsScreen from "../screens/SettingsScreen";
 import { ProgressView } from "../screens/ProgressScreen";
+import { HistoryView } from "../screens/HistoryScreen";
 import { addDays } from "../core/analytics";
 import { buildPlans } from "../core/plan";
 import { computeReadiness } from "../core/readiness";
@@ -109,6 +110,10 @@ createRoot(document.getElementById("root")!).render(
         body={demoBody}
         todayIso={TODAY}
       />
+    </div>
+  ) : view === "history" ? (
+    <div style={{ width: 390, margin: "0 auto", padding: 16 }}>
+      <HistoryView workouts={demoWorkouts} sets={demoSets} />
     </div>
   ) : view === "settings" ? (
     <div style={{ width: 390, margin: "0 auto", padding: 16 }}>

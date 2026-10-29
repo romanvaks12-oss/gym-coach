@@ -192,6 +192,83 @@ export async function testConnection(settings: AppSettings): Promise<PingResult>
   }
 }
 
+export interface PullResult {
+  ok: boolean;
+  workouts: number;
+  sets: number;
+  body: number;
+  at?: string;
+  error?: string;
+}
+
+/**
+ * Забрать всё из таблицы и **заменить** локальные данные.
+ *
+ * Нужно, когда локальная база пустая (новый телефон) или засорена тестовыми
+ * записями: сервер в этом случае считается истиной. Защита от пустого ответа:
+ * если в таблице нет ни одной тренировки, локальное не трогаем.
+ */
+export async function pullReplace(settings: AppSettings): Promise<PullResult> {
+  const url = normalizeUrl(settings.syncUrl);
+  const token = settings.syncToken.trim();
+  if (!isConfigured(settings)) {
+    return { ok: false, workouts: 0, sets: 0, body: 0, error: "Сначала заполни URL и токен" };
+  }
+
+  try {
+    const response = await call(`${url}?action=pull&token=${encodeURIComponent(token)}`, {
+      method: "GET",
+    });
+    if (!response.ok) {
+      return { ok: false, workouts: 0, sets: 0, body: 0, error: errorText(response) };
+    }
+
+    const data = (response.data ?? {}) as Record<string, unknown>;
+    const rawWorkouts = Array.isArray(data.workouts) ? data.workouts : [];
+    const rawSets = Array.isArray(data.sets) ? data.sets : [];
+    const rawBody = Array.isArray(data.body) ? data.body : [];
+
+    const workouts = rawWorkouts
+      .map(parseWorkoutRow)
+      .filter((x): x is Workout => x !== null);
+    const workoutIds = new Set(workouts.map((item) => item.id));
+    const sets = rawSets
+      .map(parseSetRow)
+      .filter((x): x is SetLog => x !== null && workoutIds.has(x.workoutId));
+    const body = rawBody.map(parseBodyRow).filter((x): x is BodyMetric => x !== null);
+
+    if (workouts.length === 0 && sets.length === 0 && body.length === 0) {
+      return {
+        ok: false,
+        workouts: 0,
+        sets: 0,
+        body: 0,
+        error: "В таблице пусто — локальные данные не тронул",
+      };
+    }
+
+    await Promise.all([db.clear("workouts"), db.clear("sets"), db.clear("body")]);
+    await Promise.all([
+      db.putMany("workouts", workouts),
+      db.putMany("sets", sets),
+      db.putMany("body", body),
+    ]);
+
+    const at = str(response.serverTime) || new Date().toISOString();
+    await saveSettings({ ...settings, lastSync: at });
+
+    return { ok: true, workouts: workouts.length, sets: sets.length, body: body.length, at };
+  } catch (error) {
+    return {
+      ok: false,
+      workouts: 0,
+      sets: 0,
+      body: 0,
+      error: error instanceof Error ? error.message : "Сеть недоступна",
+    };
+  }
+}
+
 export async function syncNow(settings: AppSettings): Promise<SyncResult> {
   const url = normalizeUrl(settings.syncUrl);
   const token = settings.syncToken.trim();

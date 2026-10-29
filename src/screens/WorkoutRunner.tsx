@@ -84,9 +84,14 @@ export default function WorkoutRunner({
     const last = ownLogs[ownLogs.length - 1];
     setEditingId(null);
     if (isBodyweight) {
-      const extra = bodyWeight ? Math.max(0, last.weight - bodyWeight) : last.weight;
-      setExtraWeight(extra > 0 ? formatKg(extra) : "");
-      setWeight("");
+      if (isTime) {
+        setExtraWeight(last.weight > 0 ? formatKg(last.weight) : "");
+        setWeight("");
+      } else {
+        const extra = bodyWeight ? Math.max(0, last.weight - bodyWeight) : last.weight;
+        setExtraWeight(extra > 0 ? formatKg(extra) : "");
+        setWeight("");
+      }
     } else {
       setWeight(formatKg(last.weight));
     }
@@ -145,8 +150,11 @@ export default function WorkoutRunner({
   function draft() {
     const extra = toNumber(extraWeight);
     const entered = toNumber(weight);
-    const total = isBodyweight ? (bodyWeight ?? 0) + extra : entered;
-    return { total, numericReps: toNumber(reps) };
+    if (isBodyweight && isTime) {
+      return { total: extra > 0 ? extra : 0, numericReps: toNumber(reps) };
+    }
+    const totalFinal = isBodyweight ? (bodyWeight ?? 0) + extra : entered;
+    return { total: totalFinal, numericReps: toNumber(reps) };
   }
 
   function startEdit(log: SetLog) {
@@ -226,9 +234,14 @@ export default function WorkoutRunner({
     setRestLeft(item.restSec);
 
     if (isBodyweight) {
-      const extra = bodyWeight ? Math.max(0, total - bodyWeight) : total;
-      setExtraWeight(extra > 0 ? formatKg(extra) : "");
-      setWeight("");
+      if (isTime) {
+        setExtraWeight(total > 0 ? formatKg(total) : "");
+        setWeight("");
+      } else {
+        const extra = bodyWeight ? Math.max(0, total - bodyWeight) : total;
+        setExtraWeight(extra > 0 ? formatKg(extra) : "");
+        setWeight("");
+      }
     } else {
       setWeight(formatKg(total));
     }
@@ -343,25 +356,41 @@ export default function WorkoutRunner({
         </h2>
 
         {isBodyweight ? (
-          <div className="row">
-            <label className="field field--half">
-              <span className="field__label">Свой вес</span>
-              <input className="input" value={bodyWeight ? `${formatKg(bodyWeight)} кг` : "не указан"} readOnly />
-            </label>
-            <label className="field field--half">
-              <span className="field__label">Доп. вес, кг</span>
+          isTime ? (
+            <label className="field">
+              <span className="field__label">Вес, кг (0 — только свой вес)</span>
               <input
                 className="input"
                 inputMode="decimal"
-                placeholder="0"
                 value={extraWeight}
+                placeholder="0"
                 onChange={(e) => {
                   setExtraWeight(e.target.value);
                   clearNotices();
                 }}
               />
             </label>
-          </div>
+          ) : (
+            <div className="row">
+              <label className="field field--half">
+                <span className="field__label">Свой вес</span>
+                <input className="input" value={bodyWeight ? `${formatKg(bodyWeight)} кг` : "не указан"} readOnly />
+              </label>
+              <label className="field field--half">
+                <span className="field__label">Доп. вес, кг</span>
+                <input
+                  className="input"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={extraWeight}
+                  onChange={(e) => {
+                    setExtraWeight(e.target.value);
+                    clearNotices();
+                  }}
+                />
+              </label>
+            </div>
+          )
         ) : (
           <label className="field">
             <span className="field__label">Вес снаряда, кг</span>

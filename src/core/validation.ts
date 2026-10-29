@@ -53,6 +53,7 @@ export function checkSetInput(input: SetCheckInput): SetCheck {
     return fail(`Больше ${LIMITS.maxWeightKg} кг — похоже на опечатку`);
   }
   if (!usesBodyweight && weight <= 0) return fail("Укажи вес снаряда");
+  // Упражнения со своим весом (подтягивания, планка) допускают 0 кг — это не ошибка
 
   if (!Number.isFinite(reps) || !Number.isInteger(reps)) {
     return fail(measure === "time" ? "Секунды — целое число" : "Повторы — целое число");
