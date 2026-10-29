@@ -22,15 +22,7 @@ function when(iso?: string): string | null {
   return `${day}.${month}, ${hh}:${mm}`;
 }
 
-/** Простой читаемый токен: его легко переписать в Code.gs руками. */
-function makeToken(): string {
-  const bytes = new Uint8Array(12);
-  crypto.getRandomValues(bytes);
-  const alphabet = "abcdefghijkmnpqrstuvwxyz23456789";
-  let out = "";
-  for (const byte of bytes) out += alphabet[byte % alphabet.length];
-  return `gc-${out}`;
-}
+
 
 export default function SettingsScreen() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -164,13 +156,6 @@ export default function SettingsScreen() {
         </label>
 
         <div className="row">
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => setSettings((s) => (s ? { ...s, syncToken: makeToken() } : s))}
-          >
-            Придумать токен
-          </button>
           <button type="button" className="button" onClick={onSave} disabled={!settings}>
             {saved ? "Сохранено" : "Сохранить"}
           </button>
