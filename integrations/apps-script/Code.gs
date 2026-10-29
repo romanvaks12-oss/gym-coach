@@ -3,7 +3,8 @@
  *
  * Как подключить — пошагово в docs/sheets-setup.md. Коротко:
  * 1. Google Sheets → Расширения → Apps Script → вставить этот файл целиком.
- * 2. Заменить TOKEN ниже на свой (его же вставить в приложении, экран «Настройки»).
+ * 2. Задать токен: либо в константе TOKEN ниже, либо в Свойствах проекта →
+ *    Свойства скрипта → добавить свойство TOKEN.
  * 3. Развернуть: Deploy → New deployment → Web app → Execute as: Me,
  *    Who has access: Anyone → скопировать URL, заканчивающийся на /exec.
  *
@@ -11,8 +12,21 @@
  * Данные никогда не удаляются: сервер только добавляет и обновляет строки по id.
  */
 
-const TOKEN = "PASTE_YOUR_TOKEN_HERE";
+const TOKEN_FALLBACK = "PASTE_YOUR_TOKEN_HERE";
 const SCHEMA_VERSION = 1;
+
+function getToken() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const fromProps = props.getProperty("TOKEN");
+    if (fromProps && String(fromProps).trim()) {
+      return String(fromProps).trim();
+    }
+  } catch (error) {
+    // Если нет доступа к свойствам — используем константу
+  }
+  return TOKEN_FALLBACK;
+}
 
 const SPEC = {
   workouts: {
@@ -71,11 +85,13 @@ function json(payload) {
 }
 
 function checkToken(value) {
-  return TOKEN !== "PASTE_YOUR_TOKEN_HERE" && String(value || "") === TOKEN;
+  const token = getToken();
+  return token !== "PASTE_YOUR_TOKEN_HERE" && String(value || "") === token;
 }
 
 function tokenError() {
-  return TOKEN === "PASTE_YOUR_TOKEN_HERE" ? "token_not_configured" : "forbidden";
+  const token = getToken();
+  return token === "PASTE_YOUR_TOKEN_HERE" ? "token_not_configured" : "forbidden";
 }
 
 /* ---------- запись ---------- */
