@@ -5,6 +5,7 @@ import { checkSetInput, formatKg } from "../core/validation";
 import type { PerformedSet } from "../core/progression";
 import type { Exercise, SetLog } from "../types";
 import ExerciseSheet from "../components/ExerciseSheet";
+import WarmupHint from "../components/WarmupHint";
 import ExtraExerciseSheet from "../components/ExtraExerciseSheet";
 import { loadHistory } from "../storage/history";
 
@@ -361,6 +362,8 @@ export default function WorkoutRunner({
           Как делать и что работает
         </button>
       </section>
+
+      <WarmupHint item={item} />
 
       {restLeft !== null && (
         <section className="card card--rest">

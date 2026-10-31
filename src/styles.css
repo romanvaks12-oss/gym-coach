@@ -1398,3 +1398,58 @@ body {
     padding: 24px 28px;
   }
 }
+
+/* P4: недельный планировщик */
+
+.week__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.week {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.week__row {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.week__row--today .week__day {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.week__day {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.week__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.week__options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.week__options .chip {
+  justify-content: center;
+  padding: 6px 4px;
+  font-size: 12px;
+}

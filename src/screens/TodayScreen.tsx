@@ -7,6 +7,9 @@ import { nowIso, todayIso } from "../core/dates";
 import { clearActiveSession, db, loadActiveSession, loadSettings, saveActiveSession } from "../storage/db";
 import { isConfigured, syncNow } from "../storage/sync";
 import { loadHistory, loadLastDay, saveLastDay } from "../storage/history";
+import { loadWeekPlan, saveWeekPlan } from "../storage/weekplan";
+import { DEFAULT_WEEK_PLAN, plannedDayFor, type WeekPlan } from "../core/weekplan";
+import WeekPlanner from "../components/WeekPlanner";
 import BriefForm from "./BriefForm";
 import PlanPicker from "./PlanPicker";
 import WorkoutRunner from "./WorkoutRunner";
@@ -35,10 +38,17 @@ export default function TodayScreen() {
   const [busy, setBusy] = useState(false);
   const [sync, setSync] = useState<SyncNote>({ kind: "idle" });
   const [active, setActive] = useState<ActiveSession | null>(null);
+  const [week, setWeek] = useState<WeekPlan>(DEFAULT_WEEK_PLAN);
 
   useEffect(() => {
     loadActiveSession().then(setActive).catch(() => setActive(null));
+    loadWeekPlan().then(setWeek).catch(() => setWeek(DEFAULT_WEEK_PLAN));
   }, []);
+
+  function updateWeek(next: WeekPlan) {
+    setWeek(next);
+    void saveWeekPlan(next);
+  }
 
   /** Тихий синк после тренировки: никогда не блокирует сводку и не мешает сохранить данные. */
   async function trySync() {
@@ -62,6 +72,7 @@ export default function TodayScreen() {
     const today = todayIso();
     const readiness = computeReadiness(brief);
     const [history, lastDay] = await Promise.all([loadHistory(), loadLastDay(today)]);
+    const planned = plannedDayFor(week, today);
     const plans = buildPlans({
       brief,
       readiness,
@@ -69,6 +80,7 @@ export default function TodayScreen() {
       exercises: EXERCISES,
       todayIso: today,
       lastDayType: lastDay?.dayType ?? null,
+      preferredDayType: planned === "rest" ? null : planned,
     });
     setBusy(false);
     setStep({ kind: "plans", plans, readiness, brief });
@@ -192,7 +204,14 @@ export default function TodayScreen() {
             </section>
           </div>
         )}
-        {!active && <BriefForm onDone={onBrief} />}
+        {!active && (
+          <>
+            <BriefForm onDone={onBrief} />
+            <div className="screen">
+              <WeekPlanner plan={week} todayIso={todayIso()} onChange={updateWeek} />
+            </div>
+          </>
+        )}
       </>
     );
   }

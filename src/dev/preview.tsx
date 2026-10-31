@@ -13,6 +13,9 @@ import WorkoutRunner from "../screens/WorkoutRunner";
 import SettingsScreen from "../screens/SettingsScreen";
 import { ProgressView } from "../screens/ProgressScreen";
 import { HistoryView } from "../screens/HistoryScreen";
+import WeekPlanner from "../components/WeekPlanner";
+import WarmupHint from "../components/WarmupHint";
+import { DEFAULT_WEEK_PLAN } from "../core/weekplan";
 import { addDays } from "../core/analytics";
 import { buildPlans } from "../core/plan";
 import { computeReadiness } from "../core/readiness";
@@ -115,6 +118,61 @@ createRoot(document.getElementById("root")!).render(
   ) : view === "history" ? (
     <div style={{ width: 390, margin: "0 auto", padding: 16 }}>
       <HistoryView workouts={demoWorkouts} sets={demoSets} />
+    </div>
+  ) : view === "warmup" ? (
+    <div style={{ width: 390, margin: "0 auto", padding: 16, display: "grid", gap: 12 }}>
+      <WarmupHint
+        item={{
+          exerciseId: "bb-back-squat",
+          name: "Приседания со штангой",
+          sets: 4,
+          repLow: 6,
+          repHigh: 8,
+          repTarget: 8,
+          weight: 100,
+          measure: "reps",
+          usesBodyweight: false,
+          targetRpe: 8,
+          restSec: 120,
+          reason: "",
+        }}
+      />
+      <WarmupHint
+        item={{
+          exerciseId: "machine-calf-raise",
+          name: "Подъём на носки",
+          sets: 3,
+          repLow: 10,
+          repHigh: 15,
+          repTarget: 12,
+          weight: 62.5,
+          measure: "reps",
+          usesBodyweight: false,
+          targetRpe: 8,
+          restSec: 75,
+          reason: "",
+        }}
+      />
+      <WarmupHint
+        item={{
+          exerciseId: "bodyweight-pull-up",
+          name: "Подтягивания",
+          sets: 3,
+          repLow: 5,
+          repHigh: 8,
+          repTarget: 6,
+          weight: null,
+          measure: "reps",
+          usesBodyweight: true,
+          targetRpe: 8,
+          restSec: 120,
+          reason: "",
+        }}
+      />
+    </div>
+  ) : view === "week" ? (
+    <div style={{ width: 390, margin: "0 auto", padding: 16 }}>
+      <WeekPlanner plan={DEFAULT_WEEK_PLAN} todayIso={TODAY} onChange={() => {}} />
     </div>
   ) : view === "settings" ? (
     <div style={{ width: 390, margin: "0 auto", padding: 16 }}>

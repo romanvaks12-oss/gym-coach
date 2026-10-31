@@ -113,6 +113,32 @@ describe("buildPlans", () => {
     expect(plans[0].items.length).toBeLessThanOrEqual(4);
   });
 
+  it("день из планировщика идёт первым, если восстановление позволяет", () => {
+    const readiness = computeReadiness(brief());
+    const plans = buildPlans({
+      brief: brief(),
+      readiness,
+      history: [],
+      exercises: EXERCISES,
+      todayIso: TODAY,
+      preferredDayType: "lower",
+    });
+    expect(plans[0].dayType).toBe("lower");
+  });
+
+  it("запланированный день не перебивает запрет по болезненности", () => {
+    const sore = brief({ soreness: { quads: 9, hamstrings: 9, glutes: 9, calves: 9 } });
+    const plans = buildPlans({
+      brief: sore,
+      readiness: computeReadiness(sore),
+      history: [],
+      exercises: EXERCISES,
+      todayIso: TODAY,
+      preferredDayType: "lower",
+    });
+    for (const plan of plans) expect(plan.dayType).not.toBe("lower");
+  });
+
   it("вес берётся из истории по двойной прогрессии", () => {
     const history = [
       set("bb-bench-press", "2026-10-22"),

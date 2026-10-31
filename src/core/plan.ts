@@ -6,6 +6,13 @@ import type { ReadinessResult } from "./readiness";
 
 export type DayType = "full" | "upper" | "lower";
 
+/** Названия типов дня — одни и те же в плане, планировщике недели и истории */
+export const DAY_TYPE_LABELS: Record<DayType, string> = {
+  full: "Всё тело",
+  upper: "Верх",
+  lower: "Низ",
+};
+
 export interface PlanItem {
   exerciseId: string;
   name: string;
@@ -43,7 +50,7 @@ interface Slot {
 
 const TEMPLATES: Record<DayType, { title: string; focus: MuscleGroup[]; slots: Slot[] }> = {
   full: {
-    title: "Всё тело",
+    title: DAY_TYPE_LABELS.full,
     focus: ["quads", "chest", "back", "shoulders", "hamstrings", "core"],
     slots: [
       { muscles: ["quads"], patterns: ["squat"] },
@@ -56,7 +63,7 @@ const TEMPLATES: Record<DayType, { title: string; focus: MuscleGroup[]; slots: S
     ],
   },
   upper: {
-    title: "Верх",
+    title: DAY_TYPE_LABELS.upper,
     focus: ["chest", "back", "lats", "shoulders", "biceps", "triceps"],
     slots: [
       { muscles: ["chest"], patterns: ["push"] },
@@ -69,7 +76,7 @@ const TEMPLATES: Record<DayType, { title: string; focus: MuscleGroup[]; slots: S
     ],
   },
   lower: {
-    title: "Низ",
+    title: DAY_TYPE_LABELS.lower,
     focus: ["quads", "hamstrings", "glutes", "calves", "core"],
     slots: [
       { muscles: ["quads"], patterns: ["squat"] },
@@ -324,8 +331,10 @@ export function buildPlans(params: {
   todayIso: string;
   /** Тип последней тренировки — чтобы не ставить верх два раза подряд */
   lastDayType?: DayType | null;
+  /** Тип дня из недельного планировщика — он идёт первым, если не противоречит восстановлению */
+  preferredDayType?: DayType | null;
 }): PlanOption[] {
-  const { brief, readiness, history, exercises, todayIso, lastDayType } = params;
+  const { brief, readiness, history, exercises, todayIso, lastDayType, preferredDayType } = params;
   const recovery = buildRecovery(history, exercises, readiness, todayIso);
   const available = new Set(exercises.map((e) => e.primaryMuscle));
 
@@ -335,14 +344,17 @@ export function buildPlans(params: {
       const rotationBonus = lastDayType && dayType === NEXT_DAY[lastDayType] ? 4 : 0;
       // Когда история уже есть, сплит важнее «всего тела»: full — запасной вариант
       const splitBonus = dayType === "full" && history.length > 0 ? -1.5 : 0;
-      return { dayType, ...scored, total: scored.score + rotationBonus + splitBonus };
+      // Планировщик недели главнее ротации, но не главнее восстановления:
+      // тип дня, который сейчас нельзя, просто не попадёт в список (usable < 2)
+      const planBonus = preferredDayType === dayType ? 100 : 0;
+      return { dayType, ...scored, total: scored.score + rotationBonus + splitBonus + planBonus };
     })
     .filter((candidate) => candidate.usable >= 2)
     .sort((a, b) => b.total - a.total);
 
   const historyEmpty = history.length === 0;
   const ordered =
-    historyEmpty && ranked.length > 0
+    historyEmpty && ranked.length > 0 && !preferredDayType
       ? [{ ...ranked[0], dayType: "full" as DayType }, ...ranked.filter((r) => r.dayType !== "full")]
       : ranked;
 
