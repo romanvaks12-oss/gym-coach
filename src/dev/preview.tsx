@@ -100,10 +100,11 @@ for (let week = 7; week >= 0; week -= 1) {
 }
 
 const view = new URLSearchParams(window.location.search).get("view");
+const wide = new URLSearchParams(window.location.search).get("wide") === "1";
 
 createRoot(document.getElementById("root")!).render(
   view === "progress" ? (
-    <div style={{ width: 390, margin: "0 auto", padding: 16 }}>
+    <div style={{ width: wide ? 1080 : 390, margin: "0 auto", padding: 16 }}>
       <ProgressView
         workouts={demoWorkouts}
         sets={demoSets}

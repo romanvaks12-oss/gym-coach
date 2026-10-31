@@ -156,6 +156,75 @@ function slotsForMinutes(minutes: Brief["minutes"]): number {
   return 7;
 }
 
+/**
+ * Рекомендация по одному упражнению: подходы, диапазон повторов, вес и RPE.
+ *
+ * Используется и при сборке плана, и когда пользователь добавляет упражнение
+ * в конце тренировки — правила должны совпадать, иначе «добавка» выпадает из логики.
+ */
+export function buildPlanItem({
+  exercise: ex,
+  history,
+  volumeMultiplier = 1,
+  band = "high",
+}: {
+  exercise: Exercise;
+  history: PerformedSet[];
+  volumeMultiplier?: number;
+  band?: ReadinessResult["band"];
+}): PlanItem {
+  const lastSets = lastSessionSets(history, ex.id);
+  const isTime = ex.measure === "time";
+  const isBodyweight = Boolean(ex.usesBodyweight);
+  /** Подтягивания: 2–3 повтора за подход и не больше 3 подходов */
+  const isPullUp = ex.id === "bodyweight-pull-up";
+
+  let repLow = isTime ? 30 : ex.pattern === "core" ? 10 : ex.isCompound ? 6 : 10;
+  let repHigh = isTime ? 45 : ex.pattern === "core" ? 15 : ex.isCompound ? 10 : 15;
+
+  if (isPullUp) {
+    const best = lastSets.length > 0 ? Math.max(...lastSets.map((s) => s.reps)) : 2;
+    repLow = Math.max(2, Math.min(best, 5));
+    repHigh = Math.min(10, repLow + 1);
+  } else if (isBodyweight && lastSets.length > 0) {
+    // Свой вес: диапазон берём от фактического результата, а не «10–15»
+    const best = Math.max(...lastSets.map((s) => s.reps));
+    repLow = Math.max(1, best);
+    repHigh = Math.min(best + 3, 12);
+  } else if (isBodyweight) {
+    repLow = 1;
+    repHigh = 5;
+  }
+
+  const baseSets = isTime ? 3 : isBodyweight ? 3 : ex.isCompound ? 4 : 3;
+  const topSets = isPullUp ? 3 : 4;
+  const sets = Math.min(topSets, Math.max(2, Math.round(baseSets * volumeMultiplier)));
+  const target = nextTarget({
+    equipment: ex.equipment,
+    repLow,
+    repHigh,
+    measure: ex.measure,
+    usesBodyweight: ex.usesBodyweight,
+    lastSets,
+  });
+  const restSec = isTime ? 60 : ex.isCompound ? 120 : 75;
+
+  return {
+    exerciseId: ex.id,
+    name: ex.name,
+    sets,
+    repLow: target.repLow,
+    repHigh: target.repHigh,
+    repTarget: target.repTarget,
+    weight: target.weight,
+    measure: ex.measure ?? "reps",
+    usesBodyweight: isBodyweight,
+    targetRpe: band === "low" ? 7 : 8,
+    restSec,
+    reason: target.reason,
+  };
+}
+
 interface RecoveryContext {
   /** Дни с последней нагрузки; null — не грузили */
   days: Map<MuscleGroup, number | null>;
@@ -293,56 +362,14 @@ export function buildPlans(params: {
       if (!ex) continue;
       used.add(ex.id);
 
-      const lastSets = lastSessionSets(history, ex.id);
-      const isTime = ex.measure === "time";
-      const isBodyweight = Boolean(ex.usesBodyweight);
-      /** Подтягивания: 2–3 повтора за подход и не больше 3 подходов */
-      const isPullUp = ex.id === "bodyweight-pull-up";
-
-      let repLow = isTime ? 30 : ex.pattern === "core" ? 10 : ex.isCompound ? 6 : 10;
-      let repHigh = isTime ? 45 : ex.pattern === "core" ? 15 : ex.isCompound ? 10 : 15;
-
-      if (isPullUp) {
-        const best = lastSets.length > 0 ? Math.max(...lastSets.map((s) => s.reps)) : 2;
-        repLow = Math.max(2, Math.min(best, 5));
-        repHigh = Math.min(10, repLow + 1);
-      } else if (isBodyweight && lastSets.length > 0) {
-        // Свой вес: диапазон берём от фактического результата, а не «10–15»
-        const best = Math.max(...lastSets.map((s) => s.reps));
-        repLow = Math.max(1, best);
-        repHigh = Math.min(best + 3, 12);
-      } else if (isBodyweight) {
-        repLow = 1;
-        repHigh = 5;
-      }
-
-      const baseSets = isTime ? 3 : isBodyweight ? 3 : ex.isCompound ? 4 : 3;
-      const topSets = isPullUp ? 3 : 4;
-      const sets = Math.min(topSets, Math.max(2, Math.round(baseSets * readiness.volumeMultiplier)));
-      const target = nextTarget({
-        equipment: ex.equipment,
-        repLow,
-        repHigh,
-        measure: ex.measure,
-        usesBodyweight: ex.usesBodyweight,
-        lastSets,
-      });
-      const restSec = isTime ? 60 : ex.isCompound ? 120 : 75;
-
-      items.push({
-        exerciseId: ex.id,
-        name: ex.name,
-        sets,
-        repLow: target.repLow,
-        repHigh: target.repHigh,
-        repTarget: target.repTarget,
-        weight: target.weight,
-        measure: ex.measure ?? "reps",
-        usesBodyweight: isBodyweight,
-        targetRpe: readiness.band === "low" ? 7 : 8,
-        restSec,
-        reason: target.reason,
-      });
+      items.push(
+        buildPlanItem({
+          exercise: ex,
+          history,
+          volumeMultiplier: readiness.volumeMultiplier,
+          band: readiness.band,
+        }),
+      );
     }
 
     const estimatedMin = Math.round(

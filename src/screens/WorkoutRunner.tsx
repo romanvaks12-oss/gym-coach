@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import type { PlanOption } from "../core/plan";
+import type { PlanItem, PlanOption } from "../core/plan";
 import { nowIso } from "../core/dates";
 import { checkSetInput, formatKg } from "../core/validation";
+import type { PerformedSet } from "../core/progression";
 import type { Exercise, SetLog } from "../types";
 import ExerciseSheet from "../components/ExerciseSheet";
+import ExtraExerciseSheet from "../components/ExtraExerciseSheet";
+import { loadHistory } from "../storage/history";
 
 const RPE_CHOICES = [6, 7, 8, 9, 10];
 
@@ -30,11 +33,12 @@ export default function WorkoutRunner({
   startedAt: number;
   initialIndex?: number;
   initialLogs?: SetLog[];
-  onProgress?: (index: number, logs: SetLog[]) => void;
+  onProgress?: (index: number, logs: SetLog[], items: PlanItem[]) => void;
   onFinish: (logs: SetLog[], durationMin: number) => void;
   onCancel: () => void;
 }) {
   const [index, setIndex] = useState(initialIndex);
+  const [items, setItems] = useState<PlanItem[]>(plan.items);
   const [logs, setLogs] = useState<SetLog[]>(initialLogs);
   const [weight, setWeight] = useState("");
   const [extraWeight, setExtraWeight] = useState("");
@@ -42,13 +46,15 @@ export default function WorkoutRunner({
   const [rpe, setRpe] = useState(8);
   const [restLeft, setRestLeft] = useState<number | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [extraOpen, setExtraOpen] = useState(false);
+  const [history, setHistory] = useState<PerformedSet[] | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   /** Предупреждение уже показано — следующее нажатие записывает */
   const [confirmPending, setConfirmPending] = useState(false);
 
-  const item = plan.items[index];
+  const item = items[index];
   const exercise = useMemo(
     () => exercises.find((e) => e.id === item?.exerciseId),
     [exercises, item?.exerciseId],
@@ -113,9 +119,25 @@ export default function WorkoutRunner({
   }, [item, ownLogs.length]);
 
   useEffect(() => {
-    onProgress?.(index, logs);
+    onProgress?.(index, logs, items);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, logs]);
+  }, [index, logs, items]);
+
+  // История нужна только для рекомендаций в «Добавить упражнение»
+  useEffect(() => {
+    if (!extraOpen || history !== null) return;
+    let cancelled = false;
+    loadHistory()
+      .then((value) => {
+        if (!cancelled) setHistory(value);
+      })
+      .catch(() => {
+        if (!cancelled) setHistory([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [extraOpen, history]);
 
   useEffect(() => {
     if (restLeft === null) return;
@@ -138,8 +160,10 @@ export default function WorkoutRunner({
     );
   }
 
-  const isLast = index === plan.items.length - 1;
+  const isLast = index === items.length - 1;
   const nextSetNumber = ownLogs.length + 1;
+  /** Упражнение добавлено по ходу тренировки, а не из плана */
+  const isExtra = !plan.items.some((entry) => entry.exerciseId === item.exerciseId);
 
   function clearNotices() {
     setError(null);
@@ -252,6 +276,18 @@ export default function WorkoutRunner({
     setConfirmPending(false);
   }
 
+  function addExtra(extra: PlanItem) {
+    const nextIndex = items.length;
+    setItems((prev) => [...prev, extra]);
+    setExtraOpen(false);
+    setRestLeft(null);
+    setEditingId(null);
+    setError(null);
+    setWarning(null);
+    setConfirmPending(false);
+    setIndex(nextIndex);
+  }
+
   function next() {
     if (isLast) {
       const durationMin = Math.max(1, Math.round((Date.now() - startedAt) / 60000));
@@ -278,7 +314,8 @@ export default function WorkoutRunner({
     <div className="screen">
       <div className="runner__top">
         <span className="hint">
-          Упражнение {index + 1} из {plan.items.length} · {plan.title}
+          Упражнение {index + 1} из {items.length} · {plan.title}
+          {isExtra && " · добавлено"}
         </span>
         <span className="runner__nav">
           {index > 0 && (
@@ -493,11 +530,31 @@ export default function WorkoutRunner({
         )}
       </section>
 
+      <button type="button" className="button button--ghost" onClick={() => setExtraOpen(true)}>
+        + Добавить упражнение
+      </button>
+      {isLast && (
+        <p className="hint">
+          Есть время и силы? Добавь упражнение — подходы, повторы и вес подберутся по твоей истории.
+        </p>
+      )}
+
       <button type="button" className={isLast ? "button" : "button button--ghost"} onClick={next}>
         {isLast ? "Завершить тренировку" : "Следующее упражнение →"}
       </button>
 
       {sheetOpen && <ExerciseSheet exercise={exercise} onClose={() => setSheetOpen(false)} />}
+
+      {extraOpen && (
+        <ExtraExerciseSheet
+          exercises={exercises}
+          usedIds={items.map((entry) => entry.exerciseId)}
+          history={history ?? []}
+          volumeMultiplier={plan.volumeMultiplier}
+          onPick={addExtra}
+          onClose={() => setExtraOpen(false)}
+        />
+      )}
     </div>
   );
 }

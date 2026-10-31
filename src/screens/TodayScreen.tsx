@@ -217,9 +217,14 @@ export default function TodayScreen() {
         startedAt={step.startedAt}
         initialIndex={step.index}
         initialLogs={step.logs}
-        onProgress={(index, logs) => {
+        onProgress={(index, logs, items) => {
           if (!active) return;
-          const updated: ActiveSession = { ...active, index, logs };
+          const updated: ActiveSession = {
+            ...active,
+            index,
+            logs,
+            plan: { ...active.plan, items },
+          };
           setActive(updated);
           void saveActiveSession(updated);
         }}

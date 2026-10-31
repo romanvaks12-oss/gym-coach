@@ -141,22 +141,54 @@ export function LineChart({
 }
 
 /** Горизонтальные полосы: объём по группам мышц. */
-export function MuscleBars({ rows }: { rows: { label: string; value: number }[] }) {
+export function MuscleBars({
+  rows,
+  onSelect,
+  activeKey,
+}: {
+  rows: { label: string; value: number; key?: string }[];
+  onSelect?: (key: string, label: string) => void;
+  activeKey?: string | null;
+}) {
   if (rows.length === 0) {
     return <p className="hint">Пока нет рабочих подходов за период.</p>;
   }
   const max = Math.max(...rows.map((row) => row.value), 1);
   return (
     <div className="mbars">
-      {rows.map((row) => (
-        <div key={row.label} className="mbars__row">
-          <span className="mbars__name">{row.label}</span>
-          <span className="mbars__track">
-            <span className="mbars__fill" style={{ width: `${(row.value / max) * 100}%` }} />
-          </span>
-          <span className="mbars__value">{row.value}</span>
-        </div>
-      ))}
+      {rows.map((row) => {
+        const body = (
+          <>
+            <span className="mbars__name">{row.label}</span>
+            <span className="mbars__track">
+              <span className="mbars__fill" style={{ width: `${(row.value / max) * 100}%` }} />
+            </span>
+            <span className="mbars__value">{row.value}</span>
+          </>
+        );
+
+        if (onSelect && row.key) {
+          return (
+            <button
+              key={row.key}
+              type="button"
+              className={
+                row.key === activeKey ? "mbars__row mbars__row--button mbars__row--active" : "mbars__row mbars__row--button"
+              }
+              onClick={() => onSelect(row.key!, row.label)}
+              aria-pressed={row.key === activeKey}
+            >
+              {body}
+            </button>
+          );
+        }
+
+        return (
+          <div key={row.label} className="mbars__row">
+            {body}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -470,6 +470,9 @@ body {
 
 .sheet__panel {
   position: relative;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
   max-height: 90dvh;
   overflow-y: auto;
   background: var(--surface);
@@ -1165,4 +1168,233 @@ body {
   font-size: 13px;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
+}
+
+/* P3: дополнительное упражнение в конце тренировки */
+
+.extralist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 46vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.extralist__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: inherit;
+  text-align: left;
+}
+
+.extralist__row:active {
+  border-color: var(--accent);
+}
+
+.extralist__name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.extralist__meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* P3: прогресс — горизонтальная версия для компьютера и кликабельные детали */
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.progress__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress__main,
+.progress__side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.progress__footer {
+  margin-top: 2px;
+}
+
+.stat--button {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.stat--button:hover,
+.stat--button:active {
+  border-color: var(--accent);
+}
+
+.mbars__row--button {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mbars__row--active .mbars__name {
+  color: var(--accent);
+}
+
+.breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.wtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wtable th {
+  text-align: right;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-dim);
+  padding: 0 0 6px;
+}
+
+.wtable th:first-child,
+.wtable td:first-child {
+  text-align: left;
+}
+
+.wtable td {
+  padding: 5px 0;
+  text-align: right;
+  border-top: 1px solid var(--line);
+}
+
+.wtable__row--now td {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.datalist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.datalist__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--line);
+}
+
+.datalist__row:first-child {
+  border-top: none;
+}
+
+.datalist__value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.datalist__delta {
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.datalist__delta--down {
+  color: var(--warn);
+}
+
+.prlist__row--button {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 8px 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.prlist__row--button:hover .prlist__name,
+.prlist__row--button:active .prlist__name {
+  color: var(--accent);
+}
+
+/* Компьютер: две колонки. Раскладка зависит от ширины контейнера,
+   поэтому на телефоне и в превью 390 px остаётся одна колонка. */
+.progress-scope {
+  container-type: inline-size;
+}
+
+@container (min-width: 760px) {
+  /* Две колонки: слева обзор и графики, справа детали. */
+  .progress {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+
+  .progress__head,
+  .progress__footer {
+    grid-column: 1 / -1;
+  }
+
+  .progress .chart {
+    min-height: 180px;
+  }
+
+  .progress .mbars__row {
+    grid-template-columns: 132px 1fr 32px;
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 900px) {
+  .app--wide {
+    max-width: 1080px;
+  }
+
+  .app--wide .content {
+    padding: 24px 28px;
+  }
 }

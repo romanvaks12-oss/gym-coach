@@ -21,7 +21,7 @@ export default function App() {
 
   return (
     <AccessGate>
-      <div className="app">
+      <div className={tab === "progress" ? "app app--wide" : "app"}>
         <header className="topbar">
           <span className="brand">Gym Coach</span>
           <span className="phase">P2</span>

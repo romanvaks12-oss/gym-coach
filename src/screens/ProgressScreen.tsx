@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { BodyMetric, SetLog, Workout } from "../types";
+import type { BodyMetric, MuscleGroup, SetLog, Workout } from "../types";
 import { MUSCLE_LABELS, byId } from "../domain/catalog";
 import { EXERCISES } from "../domain/catalog";
 import { db } from "../storage/db";
@@ -18,6 +18,7 @@ import {
   trendOf,
   weeklySummaries,
   type TrendKind,
+  type WeekSummary,
 } from "../core/analytics";
 import { LineChart, MuscleBars, WeekBars } from "../components/Charts";
 
@@ -41,6 +42,11 @@ const plural = (count: number, one: string, few: string, many: string): string =
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
   return many;
 };
+
+/** Плавный переход к нужной карточке — по клику на показатель. */
+function scrollToCard(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
 export default function ProgressScreen() {
   const [data, setData] = useState<{
@@ -79,6 +85,33 @@ export default function ProgressScreen() {
   }
 
   return <ProgressView {...data} todayIso={todayIso()} />;
+}
+
+/** Таблица недель: тренировки, подходы, тоннаж — детали к показателям. */
+function WeekTable({ weeks }: { weeks: WeekSummary[] }) {
+  const current = weeks[weeks.length - 1];
+  return (
+    <table className="wtable">
+      <thead>
+        <tr>
+          <th scope="col">Неделя</th>
+          <th scope="col">Тр.</th>
+          <th scope="col">Подх.</th>
+          <th scope="col">Тоннаж</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[...weeks].reverse().map((week) => (
+          <tr key={week.weekStart} className={week === current ? "wtable__row--now" : undefined}>
+            <td>{week.label}</td>
+            <td>{week.workouts}</td>
+            <td>{week.sets}</td>
+            <td>{formatNumber(week.tonnage)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 export function ProgressView({
@@ -122,7 +155,8 @@ export function ProgressView({
   }, [sets, workouts]);
 
   const [picked, setPicked] = useState<string | null>(null);
-  const activeId = picked && choices.some((c) => c.id === picked) ? picked : choices[0]?.id ?? null;
+  const activeId = picked ?? choices[0]?.id ?? null;
+  const [muscleOpen, setMuscleOpen] = useState<string | null>(null);
 
   const series = useMemo(
     () =>
@@ -165,6 +199,37 @@ export function ProgressView({
     return { date: done.date, sets: count };
   }, [workouts, sets]);
 
+  /** Разбивка объёма группы по упражнениям — по клику на полосу. */
+  const muscleBreakdown = useMemo(() => {
+    const dateById = new Map(workouts.map((workout) => [workout.id, workout.date]));
+    const since = addDays(today, -27);
+    const map = new Map<MuscleGroup, Map<string, number>>();
+    for (const set of sets) {
+      if (set.isWarmup) continue;
+      const date = dateById.get(set.workoutId);
+      if (!date || date < since) continue;
+      const exercise = byId(set.exerciseId);
+      if (!exercise) continue;
+      const perExercise = map.get(exercise.primaryMuscle) ?? new Map<string, number>();
+      perExercise.set(exercise.id, (perExercise.get(exercise.id) ?? 0) + 1);
+      map.set(exercise.primaryMuscle, perExercise);
+    }
+    return map;
+  }, [sets, workouts, today]);
+
+  const bodyRows = useMemo(
+    () =>
+      bodyPoints
+        .map((point, index) => ({
+          point,
+          delta:
+            index > 0 ? Math.round((point.weightKg - bodyPoints[index - 1].weightKg) * 10) / 10 : null,
+        }))
+        .reverse()
+        .slice(0, 6),
+    [bodyPoints],
+  );
+
   if (workouts.length === 0) {
     return (
       <div className="screen">
@@ -189,188 +254,306 @@ export function ProgressView({
     );
   }
 
+  const activeName = activeId ? (byId(activeId)?.name ?? activeId) : null;
+  const activeInChoices = choices.some((choice) => choice.id === activeId);
+  const breakdown = muscleOpen ? [...(muscleBreakdown.get(muscleOpen as MuscleGroup) ?? new Map())] : [];
+  const muscleLabel = muscleOpen ? (MUSCLE_LABELS[muscleOpen as MuscleGroup] ?? muscleOpen) : "";
+
   return (
-    <div className="screen">
-      <h1 className="screen__title">Прогресс</h1>
-
-      {lastWorkout && (
-        <p className="hint">
-          Последняя тренировка: {dayMonth(lastWorkout.date)} · {lastWorkout.sets}{" "}
-          {plural(lastWorkout.sets, "подход", "подхода", "подходов")}
-        </p>
-      )}
-
-      <div className="stats">
-        <div className="stat">
-          <span className="stat__value">{formatNumber(last.tonnage)}</span>
-          <span className="stat__label">кг тоннажа за неделю</span>
-          {tonnageDelta !== null && (
-            <span className={tonnageDelta >= 0 ? "stat__delta stat__delta--up" : "stat__delta stat__delta--down"}>
-              {tonnageDelta >= 0 ? "+" : "−"}
-              {Math.abs(tonnageDelta)} % {tonnageBase === prev ? "к прошлой" : `к неделе ${tonnageBase?.label}`}
-            </span>
-          )}
-          {tonnageDelta === null && <span className="stat__delta">первая неделя с данными</span>}
-        </div>
-        <div className="stat">
-          <span className="stat__value">{workouts4}</span>
-          <span className="stat__label">
-            {plural(workouts4, "тренировка", "тренировки", "тренировок")} за 4 недели
-          </span>
-          {workouts4Delta !== null && (
-            <span
-              className={workouts4Delta >= 0 ? "stat__delta stat__delta--up" : "stat__delta stat__delta--down"}
-            >
-              {workouts4Delta >= 0 ? "+" : "−"}
-              {Math.abs(workouts4Delta)} % к пред. 4 нед.
-            </span>
-          )}
-          {workouts4Delta === null && <span className="stat__delta">первый период</span>}
-        </div>
-        <div className="stat">
-          <span className="stat__value">{last.sets}</span>
-          <span className="stat__label">
-            {plural(last.sets, "подход", "подхода", "подходов")} за неделю
-          </span>
-          {setsDelta !== null && (
-            <span className={setsDelta >= 0 ? "stat__delta stat__delta--up" : "stat__delta stat__delta--down"}>
-              {setsDelta >= 0 ? "+" : "−"}
-              {Math.abs(setsDelta)} % {setsBase === prev ? "к прошлой" : `к неделе ${setsBase?.label}`}
-            </span>
-          )}
-          {setsDelta === null && <span className="stat__delta">первая неделя с данными</span>}
-        </div>
-        <div className="stat">
-          <span className="stat__value">{bodyLast === null ? "—" : formatKg(bodyLast)}</span>
-          <span className="stat__label">кг вес тела</span>
-          {bodyDiff && (
-            <span
-              className={
-                bodyDiff.deltaKg >= 0 ? "stat__delta stat__delta--up" : "stat__delta stat__delta--down"
-              }
-            >
-              {signed(bodyDiff.deltaKg)} кг
-              {bodyDeltaPct !== null ? ` (${bodyDeltaPct >= 0 ? "+" : ""}${bodyDeltaPct}%)` : ""}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <section className="card">
-        <h2 className="card__title">Тоннаж по неделям</h2>
-        <WeekBars weeks={weeks} format={formatNumber} />
-        <p className="hint">
-          Сумма «вес × повторы» по рабочим подходам. Неделя {last.label}: {formatNumber(last.tonnage)} кг.
-        </p>
-      </section>
-
-      <section className="card">
-        <h2 className="card__title">Сила: оценка 1ПМ</h2>
-        <p className="hint">
-          Эпли: вес × (1 + повторы / 30). Ориентир для сравнения недель, а не проверенный максимум.
-        </p>
-
-        {choices.length > 0 ? (
-          <>
-            <div className="chips chips--wrap">
-              {choices.map((choice) => (
-                <button
-                  key={choice.id}
-                  type="button"
-                  className={
-                    choice.id === activeId ? "chip chip--sm chip--active" : "chip chip--sm"
-                  }
-                  onClick={() => setPicked(choice.id)}
-                >
-                  {choice.name}
-                </button>
-              ))}
-            </div>
-
-            <LineChart
-              points={series.map((point) => ({ label: point.label, value: point.value }))}
-              format={formatKg}
-              unit="кг"
-              ariaLabel="Оценка 1ПМ по неделям"
-            />
-
-            {series.length > 0 && (
-              <div className="trendrow">
-                <span className={`badge badge--${trend.kind}`}>{TREND_LABEL[trend.kind]}</span>
-                <span className="hint">
-                  {trend.changePct === null
-                    ? "для тренда нужно 4 недели данных"
-                    : `${trend.changePct > 0 ? "+" : ""}${formatKg(trend.changePct)} % за 4 недели`}{" "}
-                  · лучший ≈ {formatKg(Math.max(...series.map((point) => point.value)))} кг
-                </span>
-              </div>
-            )}
-          </>
-        ) : (
-          <p className="hint">Оценка силы появится, когда запишешь подходы с весом и повторами до 15.</p>
-        )}
-      </section>
-
-      <section className="card">
-        <h2 className="card__title">Объём по группам · 4 недели</h2>
-        <MuscleBars
-          rows={volume
-            .slice(0, 8)
-            .map((item) => ({ label: MUSCLE_LABELS[item.muscle] ?? item.muscle, value: item.sets }))}
-        />
-        <p className="hint">
-          Основная группа — 1 подход, синергист — 0,5. Ориентир: 10–20 подходов на группу в неделю.
-        </p>
-      </section>
-
-      <section className="card">
-        <h2 className="card__title">Вес тела</h2>
-        {bodyPoints.length >= 2 ? (
-          <LineChart
-            points={bodyPoints.map((point) => ({ label: point.label, value: point.weightKg }))}
-            format={formatKg}
-            unit="кг"
-            ariaLabel="Вес тела по замерам"
-          />
-        ) : (
-          <p className="hint">Нужно два замера: вес тела вводится в брифе перед тренировкой.</p>
-        )}
-        {bodyDiff && (
-          <p className="card__text">
-            {formatKg(bodyDiff.from)} → {formatKg(bodyDiff.to)} кг, {signed(bodyDiff.deltaKg)} кг за{" "}
-            {formatKg(bodyDiff.weeks)} нед.
-            {bodyDiff.perWeekKg !== null && ` (${signed(bodyDiff.perWeekKg)} кг в неделю)`}
+    <div className="progress-scope">
+      <div className="progress">
+      <div className="progress__head">
+        <h1 className="screen__title">Прогресс</h1>
+        {lastWorkout && (
+          <p className="hint">
+            Последняя тренировка: {dayMonth(lastWorkout.date)} · {lastWorkout.sets}{" "}
+            {plural(lastWorkout.sets, "подход", "подхода", "подходов")} · нажми на показатель, чтобы
+            увидеть детали
           </p>
         )}
-      </section>
+      </div>
 
-      <section className="card">
-        <h2 className="card__title">Личные рекорды</h2>
-        {prs.length === 0 ? (
-          <p className="hint">Рекорды появятся, когда будут подходы с весом.</p>
-        ) : (
-          <ul className="prlist">
-            {prs.slice(0, 5).map((pr) => {
-              const exercise = byId(pr.exerciseId);
-              if (!exercise) return null;
-              return (
-                <li key={pr.exerciseId} className="prlist__row">
-                  <span className="prlist__name">
-                    {exercise.name}
-                    {pr.recent && <span className="badge badge--progress">новый</span>}
-                  </span>
-                  <span className="prlist__value">≈ {formatKg(pr.e1rm)} кг</span>
-                  <span className="prlist__meta">
-                    {dayMonth(pr.date)} · {formatKg(pr.weight)} × {pr.reps}
+      <div className="progress__main">
+        <div className="stats">
+          <button
+            type="button"
+            className="stat stat--button"
+            onClick={() => scrollToCard("weeks-card")}
+          >
+            <span className="stat__value">{formatNumber(last.tonnage)}</span>
+            <span className="stat__label">кг тоннажа за неделю</span>
+            {tonnageDelta !== null && (
+              <span
+                className={
+                  tonnageDelta >= 0 ? "stat__delta stat__delta--up" : "stat__delta stat__delta--down"
+                }
+              >
+                {tonnageDelta >= 0 ? "+" : "−"}
+                {Math.abs(tonnageDelta)} %{" "}
+                {tonnageBase === prev ? "к прошлой" : `к неделе ${tonnageBase?.label}`}
+              </span>
+            )}
+            {tonnageDelta === null && <span className="stat__delta">первая неделя с данными</span>}
+          </button>
+
+          <button
+            type="button"
+            className="stat stat--button"
+            onClick={() => scrollToCard("weeks-card")}
+          >
+            <span className="stat__value">{workouts4}</span>
+            <span className="stat__label">
+              {plural(workouts4, "тренировка", "тренировки", "тренировок")} за 4 недели
+            </span>
+            {workouts4Delta !== null && (
+              <span
+                className={
+                  workouts4Delta >= 0 ? "stat__delta stat__delta--up" : "stat__delta stat__delta--down"
+                }
+              >
+                {workouts4Delta >= 0 ? "+" : "−"}
+                {Math.abs(workouts4Delta)} % к пред. 4 нед.
+              </span>
+            )}
+            {workouts4Delta === null && <span className="stat__delta">первый период</span>}
+          </button>
+
+          <button
+            type="button"
+            className="stat stat--button"
+            onClick={() => scrollToCard("muscles-card")}
+          >
+            <span className="stat__value">{last.sets}</span>
+            <span className="stat__label">
+              {plural(last.sets, "подход", "подхода", "подходов")} за неделю
+            </span>
+            {setsDelta !== null && (
+              <span
+                className={
+                  setsDelta >= 0 ? "stat__delta stat__delta--up" : "stat__delta stat__delta--down"
+                }
+              >
+                {setsDelta >= 0 ? "+" : "−"}
+                {Math.abs(setsDelta)} % {setsBase === prev ? "к прошлой" : `к неделе ${setsBase?.label}`}
+              </span>
+            )}
+            {setsDelta === null && <span className="stat__delta">первая неделя с данными</span>}
+          </button>
+
+          <button
+            type="button"
+            className="stat stat--button"
+            onClick={() => scrollToCard("body-card")}
+          >
+            <span className="stat__value">{bodyLast === null ? "—" : formatKg(bodyLast)}</span>
+            <span className="stat__label">кг вес тела</span>
+            {bodyDiff && (
+              <span
+                className={
+                  bodyDiff.deltaKg >= 0 ? "stat__delta stat__delta--up" : "stat__delta stat__delta--down"
+                }
+              >
+                {signed(bodyDiff.deltaKg)} кг
+                {bodyDeltaPct !== null ? ` (${bodyDeltaPct >= 0 ? "+" : ""}${bodyDeltaPct}%)` : ""}
+              </span>
+            )}
+          </button>
+        </div>
+
+        <section className="card" id="tonnage-card">
+          <h2 className="card__title">Тоннаж по неделям</h2>
+          <WeekBars weeks={weeks} format={formatNumber} />
+          <p className="hint">
+            Сумма «вес × повторы» по рабочим подходам. Неделя {last.label}:{" "}
+            {formatNumber(last.tonnage)} кг.
+          </p>
+        </section>
+
+        <section className="card" id="body-card">
+          <h2 className="card__title">Вес тела</h2>
+          {bodyPoints.length >= 2 ? (
+            <LineChart
+              points={bodyPoints.map((point) => ({ label: point.label, value: point.weightKg }))}
+              format={formatKg}
+              unit="кг"
+              ariaLabel="Вес тела по замерам"
+            />
+          ) : (
+            <p className="hint">Нужно два замера: вес тела вводится в брифе перед тренировкой.</p>
+          )}
+          {bodyDiff && (
+            <p className="card__text">
+              {formatKg(bodyDiff.from)} → {formatKg(bodyDiff.to)} кг, {signed(bodyDiff.deltaKg)} кг за{" "}
+              {formatKg(bodyDiff.weeks)} нед.
+              {bodyDiff.perWeekKg !== null && ` (${signed(bodyDiff.perWeekKg)} кг в неделю)`}
+            </p>
+          )}
+          {bodyRows.length > 0 && (
+            <ul className="datalist">
+              {bodyRows.map(({ point, delta }) => (
+                <li key={`${point.date}-${point.weightKg}`} className="datalist__row">
+                  <span>{dayMonth(point.date)}</span>
+                  <span className="datalist__value">
+                    {formatKg(point.weightKg)} кг
+                    {delta !== null && delta !== 0 && (
+                      <span className={delta > 0 ? "datalist__delta" : "datalist__delta datalist__delta--down"}>
+                        {" "}
+                        {signed(delta)}
+                      </span>
+                    )}
                   </span>
                 </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
 
-      <p className="hint">Все цифры считаются на этом устройстве по локальным данным.</p>
+      <div className="progress__side">
+        <section className="card" id="strength-card">
+          <h2 className="card__title">Сила: оценка 1ПМ</h2>
+          <p className="hint">
+            Эпли: вес × (1 + повторы / 30). Ориентир для сравнения недель, а не проверенный максимум.
+          </p>
+
+          {choices.length > 0 ? (
+            <>
+              <div className="chips chips--wrap">
+                {choices.map((choice) => (
+                  <button
+                    key={choice.id}
+                    type="button"
+                    className={
+                      choice.id === activeId ? "chip chip--sm chip--active" : "chip chip--sm"
+                    }
+                    onClick={() => setPicked(choice.id)}
+                  >
+                    {choice.name}
+                  </button>
+                ))}
+                {activeId && !activeInChoices && (
+                  <button
+                    type="button"
+                    className="chip chip--sm chip--active"
+                    onClick={() => setPicked(null)}
+                    title="Вернуться к частым упражнениям"
+                  >
+                    {activeName} ✕
+                  </button>
+                )}
+              </div>
+
+              <LineChart
+                points={series.map((point) => ({ label: point.label, value: point.value }))}
+                format={formatKg}
+                unit="кг"
+                ariaLabel={`Оценка 1ПМ: ${activeName ?? "упражнение"}`}
+              />
+
+              {series.length > 0 && (
+                <div className="trendrow">
+                  <span className={`badge badge--${trend.kind}`}>{TREND_LABEL[trend.kind]}</span>
+                  <span className="hint">
+                    {trend.changePct === null
+                      ? "для тренда нужно 4 недели данных"
+                      : `${trend.changePct > 0 ? "+" : ""}${formatKg(trend.changePct)} % за 4 недели`}{" "}
+                    · лучший ≈ {formatKg(Math.max(...series.map((point) => point.value)))} кг
+                  </span>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="hint">Оценка силы появится, когда запишешь подходы с весом и повторами до 15.</p>
+          )}
+        </section>
+
+        <section className="card" id="muscles-card">
+          <h2 className="card__title">Объём по группам · 4 недели</h2>
+          <MuscleBars
+            rows={volume.slice(0, 8).map((item) => ({
+              key: item.muscle,
+              label: MUSCLE_LABELS[item.muscle] ?? item.muscle,
+              value: item.sets,
+            }))}
+            onSelect={(key) => setMuscleOpen((current) => (current === key ? null : key))}
+            activeKey={muscleOpen}
+          />
+          <p className="hint">
+            Основная группа — 1 подход, синергист — 0,5. Ориентир: 10–20 подходов на группу в неделю.
+            {muscleOpen ? " Нажми на группу ещё раз, чтобы свернуть." : " Нажми на группу — покажу упражнения."}
+          </p>
+
+          {muscleOpen && (
+            <div className="breakdown">
+              <h3 className="card__title">{muscleLabel}: из чего сложилось</h3>
+              {breakdown.length === 0 ? (
+                <p className="hint">За 4 недели не было рабочих подходов на эту группу.</p>
+              ) : (
+                <ul className="datalist">
+                  {[...breakdown]
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([exerciseId, count]) => (
+                      <li key={exerciseId} className="datalist__row">
+                        <span>{byId(exerciseId)?.name ?? exerciseId}</span>
+                        <span className="datalist__value">
+                          {count} {plural(count, "подход", "подхода", "подходов")}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="card progress__weeks" id="weeks-card">
+          <h2 className="card__title">Недели</h2>
+          <WeekTable weeks={weeks} />
+          <p className="hint">Текущая неделя выделена. Тоннаж — в килограммах.</p>
+        </section>
+
+        <section className="card" id="prs-card">
+          <h2 className="card__title">Личные рекорды</h2>
+          {prs.length === 0 ? (
+            <p className="hint">Рекорды появятся, когда будут подходы с весом.</p>
+          ) : (
+            <ul className="prlist">
+              {prs.slice(0, 6).map((pr) => {
+                const exercise = byId(pr.exerciseId);
+                if (!exercise) return null;
+                return (
+                  <li key={pr.exerciseId}>
+                    <button
+                      type="button"
+                      className="prlist__row prlist__row--button"
+                      onClick={() => {
+                        setPicked(pr.exerciseId);
+                        scrollToCard("strength-card");
+                      }}
+                      title="Показать график силы"
+                    >
+                      <span className="prlist__name">
+                        {exercise.name}
+                        {pr.recent && <span className="badge badge--progress">новый</span>}
+                      </span>
+                      <span className="prlist__value">≈ {formatKg(pr.e1rm)} кг</span>
+                      <span className="prlist__meta">
+                        {dayMonth(pr.date)} · {formatKg(pr.weight)} × {pr.reps}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <p className="hint">Нажми на рекорд — покажу график силы этого упражнения.</p>
+        </section>
+      </div>
+
+      <p className="hint progress__footer">
+        Все цифры считаются на этом устройстве по локальным данным.
+      </p>
+      </div>
     </div>
   );
 }
